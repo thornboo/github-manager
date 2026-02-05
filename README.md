@@ -55,7 +55,7 @@
 ```bash
 pnpm install
 pnpm dev
-# 访问 http://localhost:8080
+# 访问 http://localhost:8081
 ```
 
 **完整联调模式**（包含 AI API 后端函数）：
