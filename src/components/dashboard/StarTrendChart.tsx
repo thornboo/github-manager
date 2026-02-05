@@ -45,7 +45,7 @@ export function StarTrendChart({ data, isLoading }: StarTrendChartProps) {
           <div className="h-64 flex items-center justify-center text-muted-foreground">
             <div className="text-center">
               <TrendingUp className="h-12 w-12 mx-auto mb-2 opacity-50" />
-              <p>最近12个月暂无新增 Star</p>
+              <p>最近 6 个月暂无新增 Star</p>
             </div>
           </div>
         </CardContent>
@@ -60,7 +60,7 @@ export function StarTrendChart({ data, isLoading }: StarTrendChartProps) {
           <TrendingUp className="h-5 w-5 text-primary" />
           Star 趋势
         </CardTitle>
-        <CardDescription>最近 12 个月的 Star 时间分布</CardDescription>
+        <CardDescription>最近 6 个月的 Star 时间分布</CardDescription>
       </CardHeader>
       <CardContent>
         <div className="h-64">

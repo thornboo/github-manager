@@ -14,6 +14,7 @@ export function LanguagePieChart({ data, isLoading }: LanguagePieChartProps) {
   const navigate = useNavigate();
 
   const handleClick = (entry: LanguageData) => {
+    if (entry.name === '其他') return;
     navigate(`/repos?language=${encodeURIComponent(entry.name)}`);
   };
 

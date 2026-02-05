@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
-import { StarredRepo } from '@/types/github';
-import { startOfMonth, subMonths, format, differenceInDays } from 'date-fns';
+import { GitHubIssue, GitHubPullRequest, ReleaseSubscription, StarredRepo } from '@/types/github';
+import { startOfMonth, subMonths, format } from 'date-fns';
 import { zhCN } from 'date-fns/locale';
 
 // GitHub 官方语言颜色映射
@@ -44,46 +44,94 @@ export interface StarTrendData {
   fullDate: string;
 }
 
-export interface TopicData {
-  name: string;
-  count: number;
-}
-
-export interface ActivityData {
-  label: string;
-  count: number;
-  range: string;
-}
-
 export interface DashboardStats {
+  // Stars
   totalStars: number;
-  languageCount: number;
-  topLanguage: string | null;
-  newStarsThisMonth: number;
   languageDistribution: LanguageData[];
   starTrend: StarTrendData[];
-  topTopics: TopicData[];
-  activityData: ActivityData[];
+  newStarsThisMonth: number;
+  recentStars: StarredRepo[];
+
+  // Pull Requests
+  openPRCount: {
+    total: number;
+    created: number;
+    involved: number;
+  };
+  openPRs: GitHubPullRequest[];
+
+  // Issues
+  openIssueCount: {
+    total: number;
+    created: number;
+    involved: number;
+  };
+  openIssues: GitHubIssue[];
+
+  // Releases
+  pendingReleaseCount: number;
 }
 
-export function useDashboardStats(repos: StarredRepo[] | undefined): DashboardStats {
+function getDeterministicHslColor(input: string): string {
+  // Stable fallback for unknown languages (avoid Math.random() so colors don't jump between renders)
+  let hash = 0;
+  for (let i = 0; i < input.length; i++) {
+    hash = (hash * 31 + input.charCodeAt(i)) >>> 0;
+  }
+  const hue = hash % 360;
+  return `hsl(${hue}, 70%, 50%)`;
+}
+
+function mergeAndSortOpenPRs(pullRequests: { created: GitHubPullRequest[]; involved: GitHubPullRequest[] }): GitHubPullRequest[] {
+  return [...pullRequests.created, ...pullRequests.involved]
+    .filter((pr) => pr.state === 'open')
+    .sort((a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime());
+}
+
+function mergeAndSortOpenIssues(issues: { created: GitHubIssue[]; involved: GitHubIssue[] }): GitHubIssue[] {
+  return [...issues.created, ...issues.involved]
+    .filter((issue) => issue.state === 'open')
+    .sort((a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime());
+}
+
+function computePendingReleaseCount(subscriptions: ReleaseSubscription[]): number {
+  return subscriptions.filter((sub) => {
+    if (!sub.latestRelease) return false;
+    if (!sub.lastCheckedAt) return true;
+    return new Date(sub.latestRelease.publishedAt).getTime() > new Date(sub.lastCheckedAt).getTime();
+  }).length;
+}
+
+export function useDashboardStats(
+  stars: StarredRepo[] | undefined,
+  pullRequests: { created: GitHubPullRequest[]; involved: GitHubPullRequest[] } | undefined,
+  issues: { created: GitHubIssue[]; involved: GitHubIssue[] } | undefined,
+  releaseSubscriptions: ReleaseSubscription[] | undefined
+): DashboardStats {
   return useMemo(() => {
-    if (!repos || repos.length === 0) {
+    const safeStars = stars || [];
+    const safePRs = pullRequests || { created: [], involved: [] };
+    const safeIssues = issues || { created: [], involved: [] };
+    const safeSubscriptions = releaseSubscriptions || [];
+
+    if (safeStars.length === 0) {
       return {
         totalStars: 0,
-        languageCount: 0,
-        topLanguage: null,
-        newStarsThisMonth: 0,
         languageDistribution: [],
         starTrend: [],
-        topTopics: [],
-        activityData: [],
+        newStarsThisMonth: 0,
+        recentStars: [],
+        openPRCount: { total: 0, created: 0, involved: 0 },
+        openPRs: [],
+        openIssueCount: { total: 0, created: 0, involved: 0 },
+        openIssues: [],
+        pendingReleaseCount: 0,
       };
     }
 
     // 1. 语言分布统计
     const languageMap = new Map<string, number>();
-    repos.forEach(repo => {
+    safeStars.forEach(repo => {
       if (repo.language) {
         languageMap.set(repo.language, (languageMap.get(repo.language) || 0) + 1);
       }
@@ -94,27 +142,39 @@ export function useDashboardStats(repos: StarredRepo[] | undefined): DashboardSt
 
     const totalWithLanguage = sortedLanguages.reduce((sum, [, count]) => sum + count, 0);
     
-    const languageDistribution: LanguageData[] = sortedLanguages
-      .slice(0, 10) // 只取前10种语言
-      .map(([name, value]) => ({
-        name,
-        value,
-        color: LANGUAGE_COLORS[name] || `hsl(${Math.random() * 360}, 70%, 50%)`,
-        percentage: Math.round((value / totalWithLanguage) * 100),
-      }));
+    const topLanguageEntries = sortedLanguages.slice(0, 6); // 只取前 6 种语言（更利于图表可读性）
+    const otherLanguageCount = sortedLanguages
+      .slice(6)
+      .reduce((sum, [, count]) => sum + count, 0);
 
-    // 2. Star 趋势统计 (最近12个月)
+    const languageDistribution: LanguageData[] = topLanguageEntries.map(([name, value]) => ({
+      name,
+      value,
+      color: LANGUAGE_COLORS[name] || getDeterministicHslColor(name),
+      percentage: totalWithLanguage === 0 ? 0 : Math.round((value / totalWithLanguage) * 100),
+    }));
+
+    if (otherLanguageCount > 0) {
+      languageDistribution.push({
+        name: '其他',
+        value: otherLanguageCount,
+        color: 'hsl(220, 10%, 65%)',
+        percentage: totalWithLanguage === 0 ? 0 : Math.round((otherLanguageCount / totalWithLanguage) * 100),
+      });
+    }
+
+    // 2. Star 趋势统计 (最近 6 个月)
     const now = new Date();
     const monthlyStars = new Map<string, number>();
     
-    // 初始化最近12个月
-    for (let i = 11; i >= 0; i--) {
+    // 初始化最近 6 个月
+    for (let i = 5; i >= 0; i--) {
       const date = subMonths(now, i);
       const key = format(date, 'yyyy-MM');
       monthlyStars.set(key, 0);
     }
 
-    repos.forEach(repo => {
+    safeStars.forEach(repo => {
       if (repo.starred_at) {
         const starDate = new Date(repo.starred_at);
         const key = format(starDate, 'yyyy-MM');
@@ -130,68 +190,48 @@ export function useDashboardStats(repos: StarredRepo[] | undefined): DashboardSt
       fullDate: key,
     }));
 
-    // 3. 热门 Topics 统计
-    const topicMap = new Map<string, number>();
-    repos.forEach(repo => {
-      repo.topics?.forEach(topic => {
-        topicMap.set(topic, (topicMap.get(topic) || 0) + 1);
-      });
-    });
-
-    const topTopics: TopicData[] = Array.from(topicMap.entries())
-      .sort((a, b) => b[1] - a[1])
-      .slice(0, 10)
-      .map(([name, count]) => ({ name, count }));
-
-    // 4. 活跃度分析
-    const activityRanges = [
-      { label: '1周内', range: '< 1 week', days: 7 },
-      { label: '1个月内', range: '< 1 month', days: 30 },
-      { label: '3个月内', range: '< 3 months', days: 90 },
-      { label: '6个月内', range: '< 6 months', days: 180 },
-      { label: '1年内', range: '< 1 year', days: 365 },
-      { label: '超过1年', range: '> 1 year', days: Infinity },
-    ];
-
-    const activityCounts = activityRanges.map(() => 0);
-    repos.forEach(repo => {
-      if (repo.pushed_at) {
-        const daysSinceUpdate = differenceInDays(now, new Date(repo.pushed_at));
-        for (let i = 0; i < activityRanges.length; i++) {
-          if (daysSinceUpdate < activityRanges[i].days) {
-            activityCounts[i]++;
-            break;
-          } else if (i === activityRanges.length - 1) {
-            activityCounts[i]++;
-          }
-        }
-      }
-    });
-
-    const activityData: ActivityData[] = activityRanges.map((range, i) => ({
-      label: range.label,
-      count: activityCounts[i],
-      range: range.range,
-    }));
-
-    // 5. 本月新增统计
+    // 3. 本月新增统计
     const thisMonthStart = startOfMonth(now);
-    const newStarsThisMonth = repos.filter(repo => {
+    const newStarsThisMonth = safeStars.filter(repo => {
       if (repo.starred_at) {
         return new Date(repo.starred_at) >= thisMonthStart;
       }
       return false;
     }).length;
 
+    // 4. 最近 Star（最近 5 个）
+    const recentStars = [...safeStars]
+      .sort((a, b) => new Date(b.starred_at).getTime() - new Date(a.starred_at).getTime())
+      .slice(0, 5);
+
+    // 5. Open PR / Issue（统计 + 列表）
+    const openPRCreated = safePRs.created.filter((pr) => pr.state === 'open').length;
+    const openPRInvolved = safePRs.involved.filter((pr) => pr.state === 'open').length;
+    const openPRs = mergeAndSortOpenPRs(safePRs).slice(0, 5);
+
+    const openIssueCreated = safeIssues.created.filter((issue) => issue.state === 'open').length;
+    const openIssueInvolved = safeIssues.involved.filter((issue) => issue.state === 'open').length;
+    const openIssues = mergeAndSortOpenIssues(safeIssues).slice(0, 5);
+
     return {
-      totalStars: repos.length,
-      languageCount: languageMap.size,
-      topLanguage: sortedLanguages[0]?.[0] || null,
-      newStarsThisMonth,
       languageDistribution,
       starTrend,
-      topTopics,
-      activityData,
+      newStarsThisMonth,
+      totalStars: safeStars.length,
+      recentStars,
+      openPRCount: {
+        total: openPRCreated + openPRInvolved,
+        created: openPRCreated,
+        involved: openPRInvolved,
+      },
+      openPRs,
+      openIssueCount: {
+        total: openIssueCreated + openIssueInvolved,
+        created: openIssueCreated,
+        involved: openIssueInvolved,
+      },
+      openIssues,
+      pendingReleaseCount: computePendingReleaseCount(safeSubscriptions),
     };
-  }, [repos]);
+  }, [stars, pullRequests, issues, releaseSubscriptions]);
 }
