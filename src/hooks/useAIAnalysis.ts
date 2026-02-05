@@ -51,7 +51,16 @@ interface AnalyzeRequest {
   userPrompt?: string;
 }
 
-const BATCH_SIZE = 10;
+const BATCH_SIZE_BY_DEPTH: Record<AnalysisDepth, number> = {
+  // quick 模式输入更少，单次可以处理更多；deep 模式计算更重，单次数量要更小以避免服务端超时
+  quick: 10,
+  simple: 5,
+  deep: 2,
+};
+
+function getBatchSize(depth: AnalysisDepth): number {
+  return BATCH_SIZE_BY_DEPTH[depth];
+}
 const PROGRESS_INTERVAL_MS = 800; // 每 0.8 秒更新一次模拟进度
 
 export function useAIAnalysis() {
@@ -104,7 +113,8 @@ export function useAIAnalysis() {
     setSuggestions([]);
 
     const allSuggestions: RepoSuggestion[] = [];
-    const batches = Math.ceil(repos.length / BATCH_SIZE);
+    const batchSize = getBatchSize(depth);
+    const batches = Math.ceil(repos.length / batchSize);
 
     try {
       for (let i = 0; i < batches; i++) {
@@ -123,8 +133,8 @@ export function useAIAnalysis() {
           }
         }
 
-        const batchStart = i * BATCH_SIZE;
-        const batchEnd = Math.min((i + 1) * BATCH_SIZE, repos.length);
+        const batchStart = i * batchSize;
+        const batchEnd = Math.min((i + 1) * batchSize, repos.length);
         const batchRepos = repos.slice(batchStart, batchEnd);
 
         // 启动模拟进度：在 API 调用期间逐渐增加进度
@@ -158,10 +168,8 @@ export function useAIAnalysis() {
           userPrompt,
         };
 
-        // 清除模拟定时器
-        clearProgressInterval();
-        
         const data = await postJson<{ suggestions?: RepoSuggestionPayload[] }>('/api/analyze-repos', request);
+        clearProgressInterval();
 
         if (data?.suggestions) {
           const batchSuggestions: RepoSuggestion[] = data.suggestions.map((s) => ({

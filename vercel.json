@@ -1,7 +1,12 @@
 {
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "functions": {
+    "api/analyze-repos.ts": {
+      "maxDuration": 60
+    }
+  },
   "routes": [
     { "handle": "filesystem" },
     { "src": "/.*", "dest": "/index.html" }
   ]
 }
-
