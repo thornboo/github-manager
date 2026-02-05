@@ -31,7 +31,8 @@ async function fetchRepoReleases(
 
 async function fetchAllSubscribedReleases(
   token: string,
-  subscriptions: ReleaseSubscription[]
+  subscriptions: ReleaseSubscription[],
+  perRepo: number
 ): Promise<ReleaseWithRepo[]> {
   if (subscriptions.length === 0) {
     return [];
@@ -40,7 +41,7 @@ async function fetchAllSubscribedReleases(
   // Fetch releases for all subscribed repos in parallel
   const results = await Promise.allSettled(
     subscriptions.map(async (sub) => {
-      const releases = await fetchRepoReleases(token, sub.repoFullName, 5);
+      const releases = await fetchRepoReleases(token, sub.repoFullName, perRepo);
       return releases
         .filter(r => !r.draft) // Exclude drafts
         .map(release => ({
@@ -66,12 +67,13 @@ async function fetchAllSubscribedReleases(
   return allReleases;
 }
 
-export function useReleasesFetch(subscriptions: ReleaseSubscription[]) {
+export function useReleasesFetch(subscriptions: ReleaseSubscription[], options?: { perRepo?: number }) {
   const { accessToken, isAuthenticated } = useAuth();
+  const perRepo = options?.perRepo ?? 5;
 
   return useQuery({
-    queryKey: ['releases', subscriptions.map(s => s.repoFullName).join(',')],
-    queryFn: () => fetchAllSubscribedReleases(accessToken!, subscriptions),
+    queryKey: ['releases', perRepo, subscriptions.map(s => s.repoFullName).join(',')],
+    queryFn: () => fetchAllSubscribedReleases(accessToken!, subscriptions, perRepo),
     enabled: isAuthenticated && !!accessToken && subscriptions.length > 0,
     staleTime: 5 * 60 * 1000, // 5 minutes
     refetchOnWindowFocus: false,

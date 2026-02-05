@@ -77,7 +77,6 @@ export function useReleases() {
       if (sub.repoFullName.toLowerCase() === repoFullName.toLowerCase()) {
         return {
           ...sub,
-          lastCheckedAt: new Date().toISOString(),
           latestRelease: release,
         };
       }
@@ -97,6 +96,14 @@ export function useReleases() {
     }));
   }, []);
 
+  const markAllChecked = useCallback(() => {
+    const now = new Date().toISOString();
+    setSubscriptions(prev => prev.map(sub => ({
+      ...sub,
+      lastCheckedAt: now,
+    })));
+  }, []);
+
   return {
     subscriptions,
     addSubscription,
@@ -105,5 +112,6 @@ export function useReleases() {
     isSubscribed,
     updateLatestRelease,
     updateLastChecked,
+    markAllChecked,
   };
 }

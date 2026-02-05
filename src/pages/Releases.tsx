@@ -14,9 +14,15 @@ import { AddSubscriptionDialog } from '@/components/releases/AddSubscriptionDial
 
 function ReleasesContent() {
   const [dialogOpen, setDialogOpen] = useState(false);
-  const { subscriptions, addSubscriptions, removeSubscription, updateLatestRelease } = useReleases();
+  const { subscriptions, addSubscriptions, removeSubscription, updateLatestRelease, markAllChecked } = useReleases();
   const { data: releases, isLoading: isLoadingReleases, refetch } = useReleasesFetch(subscriptions);
   const { data: starredRepos = [], isLoading: isLoadingStars } = useStars();
+
+  // 进入页面即视为“已查看”，用于首页的待更新统计清零。
+  useEffect(() => {
+    if (subscriptions.length === 0) return;
+    markAllChecked();
+  }, [markAllChecked, subscriptions.length]);
 
   // Update subscription latest release info when releases are fetched
   useEffect(() => {

@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { Search, GitPullRequest, GitMerge, XCircle } from 'lucide-react';
 import { Header } from '@/components/layout/Header';
 import { useSyncContext } from '@/contexts/SyncContext';
@@ -6,6 +6,7 @@ import { PRCard } from '@/components/pr/PRCard';
 import { Input } from '@/components/ui/input';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Skeleton } from '@/components/ui/skeleton';
+import { useSearchParams } from 'react-router-dom';
 import {
   Select,
   SelectContent,
@@ -16,15 +17,31 @@ import {
 import { PRSource } from '@/hooks/usePullRequests';
 
 type PRFilter = 'all' | 'open' | 'closed' | 'merged';
+type PRSourceFilter = PRSource | 'all';
 
 export default function PullRequests() {
   const { pullRequests, isLoading } = useSyncContext();
   const [search, setSearch] = useState('');
   const [filter, setFilter] = useState<PRFilter>('all');
-  const [source, setSource] = useState<PRSource>('created');
+  const [source, setSource] = useState<PRSourceFilter>('created');
+  const [searchParams] = useSearchParams();
+
+  // URL 参数支持：/pulls?state=open&source=all
+  useEffect(() => {
+    const stateParam = searchParams.get('state');
+    if (stateParam === 'all' || stateParam === 'open' || stateParam === 'closed' || stateParam === 'merged') {
+      setFilter(stateParam);
+    }
+
+    const sourceParam = searchParams.get('source');
+    if (sourceParam === 'created' || sourceParam === 'involved' || sourceParam === 'all') {
+      setSource(sourceParam);
+    }
+  }, [searchParams]);
 
   const currentPRs = useMemo(() => {
     if (!pullRequests) return [];
+    if (source === 'all') return [...pullRequests.created, ...pullRequests.involved];
     return source === 'created' ? pullRequests.created : pullRequests.involved;
   }, [pullRequests, source]);
 
@@ -33,7 +50,7 @@ export default function PullRequests() {
 
     // 过滤状态
     if (filter === 'open') {
-      filtered = filtered.filter(pr => pr.state === 'open' && !pr.draft);
+      filtered = filtered.filter(pr => pr.state === 'open');
     } else if (filter === 'closed') {
       filtered = filtered.filter(pr => pr.state === 'closed' && !pr.pull_request?.merged_at);
     } else if (filter === 'merged') {
@@ -55,7 +72,7 @@ export default function PullRequests() {
   const counts = useMemo(() => {
     return {
       all: currentPRs.length,
-      open: currentPRs.filter(pr => pr.state === 'open' && !pr.draft).length,
+      open: currentPRs.filter(pr => pr.state === 'open').length,
       closed: currentPRs.filter(pr => pr.state === 'closed' && !pr.pull_request?.merged_at).length,
       merged: currentPRs.filter(pr => pr.pull_request?.merged_at).length,
     };
@@ -66,13 +83,6 @@ export default function PullRequests() {
       <Header />
       <main className="flex-1 container py-6 space-y-6">
         <div className="flex flex-col gap-4">
-          <div className="flex items-center justify-between">
-            <h1 className="text-2xl font-bold">我的 Pull Requests</h1>
-            <span className="text-sm text-muted-foreground">
-              共 {counts.all} 个 PR
-            </span>
-          </div>
-
           <div className="flex flex-col sm:flex-row gap-4">
             <div className="relative flex-1">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -83,11 +93,12 @@ export default function PullRequests() {
                 className="pl-9"
               />
             </div>
-            <Select value={source} onValueChange={(v) => setSource(v as PRSource)}>
+            <Select value={source} onValueChange={(v) => setSource(v as PRSourceFilter)}>
               <SelectTrigger className="w-[140px]">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
+                <SelectItem value="all">全部</SelectItem>
                 <SelectItem value="created">我创建的</SelectItem>
                 <SelectItem value="involved">我参与的</SelectItem>
               </SelectContent>
@@ -125,7 +136,13 @@ export default function PullRequests() {
             <GitPullRequest className="h-12 w-12 text-muted-foreground mb-4" />
             <h3 className="text-lg font-medium">暂无 Pull Requests</h3>
             <p className="text-sm text-muted-foreground">
-              {search ? '没有找到匹配的 PR' : source === 'created' ? '你还没有提交过 PR' : '你还没有参与过其他人的 PR'}
+              {search
+                ? '没有找到匹配的 PR'
+                : source === 'created'
+                  ? '你还没有提交过 PR'
+                  : source === 'involved'
+                    ? '你还没有参与过其他人的 PR'
+                    : '你还没有任何 PR 记录'}
             </p>
           </div>
         ) : (
