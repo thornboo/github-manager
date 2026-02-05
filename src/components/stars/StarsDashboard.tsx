@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback } from 'react';
+import { useState, useMemo, useCallback, useEffect } from 'react';
 import { useStars, getLanguages, filterRepos } from '@/hooks/useStars';
 import { useListStars, useLists, useAddToList } from '@/hooks/useLists';
 import { useLocalDataContext } from '@/contexts/LocalDataContext';
@@ -13,11 +13,21 @@ import { useAISettings } from '@/hooks/useAISettings';
 import { useAISearch } from '@/hooks/useAISearch';
 import { toast } from 'sonner';
 import { AnalysisScope, AnalysisDepth } from './AIAnalysisButton';
+import { useSearchParams } from 'react-router-dom';
 
 interface StarsDashboardProps {
   selectedList: string | null;
   selectedTag: string | null;
   selectedTopic: string | null;
+}
+
+function getGridColumnCount(): number {
+  // Keep in sync with Tailwind breakpoints: md=768px, xl=1280px
+  if (typeof window === 'undefined') return 1;
+  const width = window.innerWidth;
+  if (width >= 1280) return 3;
+  if (width >= 768) return 2;
+  return 1;
 }
 
 export function StarsDashboard({ selectedList, selectedTag, selectedTopic }: StarsDashboardProps) {
@@ -34,10 +44,41 @@ export function StarsDashboard({ selectedList, selectedTag, selectedTopic }: Sta
   const [selectedRepos, setSelectedRepos] = useState<Set<number>>(new Set());
   const [showResults, setShowResults] = useState(false);
   const [searchMode, setSearchMode] = useState<SearchMode>('normal');
+  const [gridColumnCount, setGridColumnCount] = useState(getGridColumnCount);
+  const [searchParams] = useSearchParams();
 
   const { settings: aiSettings, updateSettings, setLastAnalyzedAt } = useAISettings();
   const { progress, suggestions, analyzeRepos, analyzeSingleRepo, resetAnalysis, pauseAnalysis, resumeAnalysis, isPaused } = useAIAnalysis();
   const { isSearching: isAISearching, searchResults, aiSearch, clearSearch } = useAISearch();
+
+  // URL 参数支持：用于 Dashboard/图表点击跳转到 /repos?language=xxx /repos?sort=stars&direction=desc
+  useEffect(() => {
+    const languageParam = searchParams.get('language');
+    setLanguage(languageParam);
+
+    const sortParamRaw = searchParams.get('sort');
+    if (sortParamRaw) {
+      const sortParam = sortParamRaw === 'starred_at' ? 'starred' : sortParamRaw;
+      const directionParam = searchParams.get('direction');
+      const direction = directionParam === 'asc' || directionParam === 'desc' ? directionParam : undefined;
+
+      const fieldMap: Record<string, SortField> = {
+        starred: 'starred',
+        stars: 'stars',
+        updated: 'updated',
+        name: 'name',
+        forks: 'forks',
+      };
+
+      const field = fieldMap[sortParam];
+      if (field) {
+        setSortField(field);
+        if (direction) {
+          setSortDirection(direction);
+        }
+      }
+    }
+  }, [searchParams]);
 
   const languages = useMemo(() => {
     return stars ? getLanguages(stars) : [];
@@ -133,6 +174,23 @@ export function StarsDashboard({ selectedList, selectedTag, selectedTopic }: Sta
     const filtered = filterRepos(repos, search, language);
     return sortRepos(filtered, sortField, sortDirection);
   }, [stars, search, language, selectedList, listRepoIds, selectedTag, repoMeta, selectedTopic, sortField, sortDirection, searchMode, searchResults]);
+
+  // Avoid the "column-sorted" illusion from CSS columns by distributing repos row-wise into fixed columns.
+  // This keeps the visual order aligned with sorting while still producing a compact masonry-like layout.
+  const gridColumns = useMemo(() => {
+    const cols: StarredRepo[][] = Array.from({ length: Math.max(1, gridColumnCount) }, () => []);
+    filteredRepos.forEach((repo, idx) => {
+      cols[idx % cols.length].push(repo);
+    });
+    return cols;
+  }, [filteredRepos, gridColumnCount]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const onResize = () => setGridColumnCount(getGridColumnCount());
+    window.addEventListener('resize', onResize);
+    return () => window.removeEventListener('resize', onResize);
+  }, []);
 
   // Get lists with repo IDs for AI search
   const listsWithRepos = useMemo(() => {
@@ -442,15 +500,18 @@ export function StarsDashboard({ selectedList, selectedTag, selectedTopic }: Sta
           <p className="text-sm mt-1">试试其他搜索关键词或筛选条件</p>
         </div>
       ) : viewMode === 'grid' ? (
-        <div className="masonry-container">
-          {filteredRepos.map(repo => (
-            <div key={repo.id} className="masonry-item">
-              <RepoCard 
-                repo={repo} 
-                isSelected={selectedRepos.has(repo.id)}
-                onToggleSelect={() => toggleRepoSelection(repo.id)}
-                onAnalyze={() => handleSingleAnalyze(repo)}
-              />
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 items-start">
+          {gridColumns.map((col, colIndex) => (
+            <div key={colIndex} className="flex flex-col gap-4">
+              {col.map(repo => (
+                <RepoCard
+                  key={repo.id}
+                  repo={repo}
+                  isSelected={selectedRepos.has(repo.id)}
+                  onToggleSelect={() => toggleRepoSelection(repo.id)}
+                  onAnalyze={() => handleSingleAnalyze(repo)}
+                />
+              ))}
             </div>
           ))}
         </div>
