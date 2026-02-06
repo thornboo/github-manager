@@ -35,12 +35,17 @@ export function StarsDashboard({
   const SCROLL_OFFSET_STORAGE_KEY = "github_stars_scroll_offset";
 
   const scrollContainerRef = useRef<HTMLDivElement>(null);
-  const columnCount = useResponsiveColumns(scrollContainerRef);
+  const columnCount = useResponsiveColumns();
   const didInitResetRef = useRef(false);
   const didRestoreScrollRef = useRef(false);
   const savedScrollOffsetRef = useRef<number | null>(null);
 
-  const { data: stars, isLoading, error } = useStars();
+  const {
+    data: stars,
+    dataUpdatedAt: starsUpdatedAt,
+    isLoading,
+    error,
+  } = useStars();
   const { data: listRepoIds, isLoading: isLoadingList } =
     useListStars(selectedList);
   const { data: lists } = useLists();
@@ -291,11 +296,13 @@ export function StarsDashboard({
               />
             ) : viewMode === "card" ? (
               <VirtualStarsGrid
+                key={`stars-grid-${columnCount}`}
                 repos={filteredRepos}
                 selectedRepos={selectedRepos}
                 onToggleSelect={toggleRepoSelection}
                 onAnalyze={ai.analyzeSingle}
                 columnCount={columnCount}
+                dataUpdatedAt={starsUpdatedAt}
                 scrollElementRef={scrollContainerRef}
               />
             ) : (

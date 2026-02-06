@@ -102,6 +102,7 @@ describe("Virtual stars components", () => {
       getTotalSize: () => 10_000,
       scrollToIndex: vi.fn(),
       measureElement: vi.fn(),
+      measure: vi.fn(),
     });
 
     const repos = Array.from({ length: 50 }, (_, i) => mockRepo(i));

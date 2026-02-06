@@ -1,4 +1,4 @@
-import { useCallback, useLayoutEffect, useState } from "react";
+import { useCallback, useLayoutEffect } from "react";
 import type { StarredRepo } from "@/types/github";
 import { RepoCard } from "@/components/stars/RepoCard";
 import { cn } from "@/lib/utils";
@@ -10,6 +10,11 @@ interface VirtualStarsGridProps {
   onToggleSelect: (repoId: number) => void;
   onAnalyze: (repo: StarredRepo) => void;
   columnCount: number;
+  /**
+   * 用于在“同步/刷新”后强制重置虚拟列表的测量与 lane 缓存。
+   * 典型来源：TanStack Query 的 dataUpdatedAt。
+   */
+  dataUpdatedAt?: number;
   scrollElementRef: React.RefObject<HTMLDivElement>;
   className?: string;
 }
@@ -23,26 +28,11 @@ export function VirtualStarsGrid({
   onToggleSelect,
   onAnalyze,
   columnCount,
+  dataUpdatedAt,
   scrollElementRef,
   className,
 }: VirtualStarsGridProps) {
   const safeColumnCount = Math.max(1, columnCount);
-  const [containerWidth, setContainerWidth] = useState(() => {
-    return scrollElementRef.current?.clientWidth ?? 0;
-  });
-
-  // 监听滚动容器宽度：避免在首次渲染时 ref 尚未就绪导致宽度为 0，从而丢失“卡片流/瀑布流”布局。
-  useLayoutEffect(() => {
-    const container = scrollElementRef.current;
-    if (!container) return;
-
-    const update = () => setContainerWidth(container.clientWidth);
-    update();
-
-    const observer = new ResizeObserver(() => update());
-    observer.observe(container);
-    return () => observer.disconnect();
-  }, [scrollElementRef]);
 
   // 使用 lanes 实现“卡片流/瀑布流”虚拟化：每一列作为一个 lane，纵向按实际高度堆叠。
   // 这能保留原 StarsGrid 的紧凑布局（不会出现等高行导致的空洞）。
@@ -56,14 +46,22 @@ export function VirtualStarsGrid({
     getItemKey: (index) => repos[index]?.id ?? index,
   });
 
+  // 关键：lanes 模式下 Virtualizer 会缓存 laneAssignments/itemSizeCache。
+  // 当数据“同步/刷新”后，即使 count 没变，也可能出现缓存与新数据顺序/高度不一致，
+  // 导致布局错乱（表现为刷新后卡片流变成单列，切换视图触发 remount 才恢复）。
+  // 用 dataUpdatedAt 做信号，主动 measure() 让 Virtualizer 重建缓存。
+  useLayoutEffect(() => {
+    virtualizer.measure();
+  }, [virtualizer, dataUpdatedAt, safeColumnCount]);
+
   const virtualItems = virtualizer.getVirtualItems();
   const totalSize = virtualizer.getTotalSize();
   const measureElement = virtualizer.measureElement;
 
-  const laneWidth =
+  const itemWidth =
     safeColumnCount === 1
-      ? containerWidth
-      : (containerWidth - GAP * (safeColumnCount - 1)) / safeColumnCount;
+      ? "100%"
+      : `calc((100% - ${GAP * (safeColumnCount - 1)}px) / ${safeColumnCount})`;
 
   const focusRepoByIndex = useCallback(
     (index: number) => {
@@ -146,6 +144,11 @@ export function VirtualStarsGrid({
         const repo = repos[virtualItem.index];
         if (!repo) return null;
 
+        const x =
+          safeColumnCount === 1
+            ? "0px"
+            : `calc(${virtualItem.lane * 100}% + ${virtualItem.lane * GAP}px)`;
+
         return (
           <div
             key={virtualItem.key}
@@ -155,10 +158,8 @@ export function VirtualStarsGrid({
               position: "absolute",
               top: 0,
               left: 0,
-              width: laneWidth > 0 ? `${laneWidth}px` : "100%",
-              transform: `translateX(${
-                laneWidth > 0 ? virtualItem.lane * (laneWidth + GAP) : 0
-              }px) translateY(${virtualItem.start}px)`,
+              width: itemWidth,
+              transform: `translateX(${x}) translateY(${virtualItem.start}px)`,
               willChange: "transform",
             }}
           >
