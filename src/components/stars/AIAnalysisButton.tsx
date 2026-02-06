@@ -1,27 +1,26 @@
-import { useState } from 'react';
-import { Button } from '@/components/ui/button';
-import { Progress } from '@/components/ui/progress';
-import { Badge } from '@/components/ui/badge';
+import { useState } from "react";
+import { Button } from "@/components/ui/button";
+import { Progress } from "@/components/ui/progress";
+import { Badge } from "@/components/ui/badge";
 import {
   Popover,
   PopoverContent,
   PopoverTrigger,
-} from '@/components/ui/popover';
-import { 
-  Sparkles, 
-  Zap, 
-  FileText, 
+} from "@/components/ui/popover";
+import {
+  Sparkles,
+  Zap,
+  FileText,
   Brain,
   Pause,
   Play,
   X,
-  ArrowRight
-} from 'lucide-react';
-import { cn } from '@/lib/utils';
-import { RepoSuggestion } from '@/hooks/useAIAnalysis';
+  ArrowRight,
+} from "lucide-react";
+import { cn } from "@/lib/utils";
+import type { AnalysisDepth, AnalysisScope, RepoSuggestion } from "@/types/ai";
 
-export type AnalysisScope = 'all' | 'uncategorized' | 'selected';
-export type AnalysisDepth = 'quick' | 'simple' | 'deep';
+export type { AnalysisDepth, AnalysisScope } from "@/types/ai";
 
 interface AIAnalysisButtonProps {
   totalCount: number;
@@ -42,9 +41,24 @@ interface AIAnalysisButtonProps {
 }
 
 const DEPTH_OPTIONS = [
-  { value: 'quick' as AnalysisDepth, label: '快速', icon: Zap, description: '基于名称' },
-  { value: 'simple' as AnalysisDepth, label: '简单', icon: FileText, description: '基于描述' },
-  { value: 'deep' as AnalysisDepth, label: '深度', icon: Brain, description: '深度推断' },
+  {
+    value: "quick" as AnalysisDepth,
+    label: "快速",
+    icon: Zap,
+    description: "基于名称",
+  },
+  {
+    value: "simple" as AnalysisDepth,
+    label: "简单",
+    icon: FileText,
+    description: "基于描述",
+  },
+  {
+    value: "deep" as AnalysisDepth,
+    label: "深度",
+    icon: Brain,
+    description: "深度推断",
+  },
 ];
 
 export function AIAnalysisButton({
@@ -64,21 +78,22 @@ export function AIAnalysisButton({
   onViewResults,
   disabled,
 }: AIAnalysisButtonProps) {
-  const [scope, setScope] = useState<AnalysisScope>('all');
+  const [scope, setScope] = useState<AnalysisScope>("all");
   const [open, setOpen] = useState(false);
 
   const getAnalysisCount = () => {
     switch (scope) {
-      case 'all':
+      case "all":
         return totalCount;
-      case 'uncategorized':
+      case "uncategorized":
         return uncategorizedCount;
-      case 'selected':
+      case "selected":
         return selectedCount;
     }
   };
 
-  const progressPercent = progress.total > 0 ? (progress.completed / progress.total) * 100 : 0;
+  const progressPercent =
+    progress.total > 0 ? (progress.completed / progress.total) * 100 : 0;
   const isActive = isAnalyzing || isPaused;
 
   // Determine button state/label
@@ -88,17 +103,20 @@ export function AIAnalysisButton({
         <>
           <Sparkles className="h-4 w-4 animate-pulse" />
           <span className="hidden sm:inline ml-1.5">
-            {isPaused ? '已暂停' : `${progress.completed}/${progress.total}`}
+            {isPaused ? "已暂停" : `${progress.completed}/${progress.total}`}
           </span>
         </>
       );
     }
-    
+
     if (suggestions.length > 0) {
       return (
         <>
           <Sparkles className="h-4 w-4" />
-          <Badge variant="secondary" className="ml-1.5 px-1.5 py-0 text-xs leading-tight">
+          <Badge
+            variant="secondary"
+            className="ml-1.5 px-1.5 py-0 text-xs leading-tight"
+          >
             {suggestions.length}
           </Badge>
         </>
@@ -110,7 +128,10 @@ export function AIAnalysisButton({
         <Sparkles className="h-4 w-4" />
         <span className="hidden sm:inline ml-1.5">AI</span>
         {disabled && (
-          <Badge variant="outline" className="ml-1.5 px-1.5 py-0 text-xs leading-tight text-muted-foreground">
+          <Badge
+            variant="outline"
+            className="ml-1.5 px-1.5 py-0 text-xs leading-tight text-muted-foreground"
+          >
             未配置
           </Badge>
         )}
@@ -122,12 +143,15 @@ export function AIAnalysisButton({
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
         <Button
-          variant={isActive ? 'default' : suggestions.length > 0 ? 'secondary' : 'outline'}
+          variant={
+            isActive
+              ? "default"
+              : suggestions.length > 0
+                ? "secondary"
+                : "outline"
+          }
           size="sm"
-          className={cn(
-            "h-9 px-3",
-            isActive && "animate-pulse"
-          )}
+          className={cn("h-9 px-3", isActive && "animate-pulse")}
         >
           {getButtonContent()}
         </Button>
@@ -147,7 +171,7 @@ export function AIAnalysisButton({
             <div className="space-y-2">
               <div className="flex items-center justify-between text-sm">
                 <span className="text-muted-foreground">
-                  {isPaused ? '已暂停' : '分析中...'}
+                  {isPaused ? "已暂停" : "分析中..."}
                 </span>
                 <span className="font-medium">
                   {progress.completed} / {progress.total}
@@ -164,27 +188,27 @@ export function AIAnalysisButton({
             </label>
             <div className="flex gap-2">
               <Button
-                variant={scope === 'all' ? 'default' : 'outline'}
+                variant={scope === "all" ? "default" : "outline"}
                 size="sm"
-                onClick={() => setScope('all')}
+                onClick={() => setScope("all")}
                 disabled={isActive}
                 className="flex-1"
               >
                 全部 ({totalCount})
               </Button>
               <Button
-                variant={scope === 'uncategorized' ? 'default' : 'outline'}
+                variant={scope === "uncategorized" ? "default" : "outline"}
                 size="sm"
-                onClick={() => setScope('uncategorized')}
+                onClick={() => setScope("uncategorized")}
                 disabled={isActive}
                 className="flex-1"
               >
                 未分类 ({uncategorizedCount})
               </Button>
               <Button
-                variant={scope === 'selected' ? 'default' : 'outline'}
+                variant={scope === "selected" ? "default" : "outline"}
                 size="sm"
-                onClick={() => setScope('selected')}
+                onClick={() => setScope("selected")}
                 disabled={isActive || selectedCount === 0}
                 className="flex-1"
               >
@@ -202,7 +226,7 @@ export function AIAnalysisButton({
               {DEPTH_OPTIONS.map((option) => (
                 <Button
                   key={option.value}
-                  variant={depth === option.value ? 'default' : 'outline'}
+                  variant={depth === option.value ? "default" : "outline"}
                   size="sm"
                   onClick={() => onDepthChange(option.value)}
                   disabled={isActive}
@@ -223,12 +247,19 @@ export function AIAnalysisButton({
               </label>
               <div className="text-sm bg-muted/30 rounded-lg p-2 space-y-1 max-h-20 overflow-y-auto">
                 {suggestions.slice(-2).map((s, i) => (
-                  <div key={i} className="flex items-center gap-1.5 text-muted-foreground text-xs">
+                  <div
+                    key={i}
+                    className="flex items-center gap-1.5 text-muted-foreground text-xs"
+                  >
                     <span className="truncate flex-1">{s.repoName}</span>
                     <span>→</span>
                     <span className="flex gap-1">
                       {s.suggestedTags.slice(0, 2).map((tag, j) => (
-                        <Badge key={j} variant="secondary" className="text-xs px-1 py-0">
+                        <Badge
+                          key={j}
+                          variant="secondary"
+                          className="text-xs px-1 py-0"
+                        >
                           {tag.name}
                         </Badge>
                       ))}
@@ -250,26 +281,44 @@ export function AIAnalysisButton({
               {isActive ? (
                 <>
                   {isPaused ? (
-                    <Button size="sm" onClick={onResume} variant="outline" className="h-8">
+                    <Button
+                      size="sm"
+                      onClick={onResume}
+                      variant="outline"
+                      className="h-8"
+                    >
                       <Play className="h-3.5 w-3.5 mr-1" />
                       继续
                     </Button>
                   ) : (
-                    <Button size="sm" onClick={onPause} variant="outline" className="h-8">
+                    <Button
+                      size="sm"
+                      onClick={onPause}
+                      variant="outline"
+                      className="h-8"
+                    >
                       <Pause className="h-3.5 w-3.5 mr-1" />
                       暂停
                     </Button>
                   )}
-                  <Button size="sm" onClick={onCancel} variant="destructive" className="h-8">
+                  <Button
+                    size="sm"
+                    onClick={onCancel}
+                    variant="destructive"
+                    className="h-8"
+                  >
                     <X className="h-3.5 w-3.5" />
                   </Button>
                 </>
               ) : (
                 <>
                   {suggestions.length > 0 && (
-                    <Button 
-                      size="sm" 
-                      onClick={() => { onViewResults(); setOpen(false); }}
+                    <Button
+                      size="sm"
+                      onClick={() => {
+                        onViewResults();
+                        setOpen(false);
+                      }}
                       variant="outline"
                       className="h-8"
                     >
@@ -277,8 +326,8 @@ export function AIAnalysisButton({
                       <ArrowRight className="h-3.5 w-3.5 ml-1" />
                     </Button>
                   )}
-                  <Button 
-                    size="sm" 
+                  <Button
+                    size="sm"
                     onClick={() => onAnalyze(scope, depth)}
                     disabled={disabled || getAnalysisCount() === 0}
                     className="h-8"

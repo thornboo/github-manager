@@ -1,9 +1,14 @@
-import { Link } from 'react-router-dom';
-import { Star, GitPullRequest, CircleDot, Rss, Calendar } from 'lucide-react';
-import { Card, CardContent } from '@/components/ui/card';
-import { Skeleton } from '@/components/ui/skeleton';
-import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
-import { DashboardStats } from '@/hooks/useDashboardStats';
+import type { ReactNode } from "react";
+import { Link } from "react-router-dom";
+import { Star, GitPullRequest, CircleDot, Rss, Calendar } from "lucide-react";
+import { Card, CardContent } from "@/components/ui/card";
+import { Skeleton } from "@/components/ui/skeleton";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+import { DashboardStats } from "@/hooks/useDashboardStats";
 
 interface OverviewCardsProps {
   stats: DashboardStats;
@@ -11,21 +16,34 @@ interface OverviewCardsProps {
   subscriptionCount: number;
 }
 
-export function OverviewCards({ stats, isLoading, subscriptionCount }: OverviewCardsProps) {
-  const cards = [
+type OverviewCard = {
+  label: string;
+  value: string;
+  icon: typeof Star;
+  iconClassName: string;
+  to: string;
+  tooltip?: ReactNode;
+};
+
+export function OverviewCards({
+  stats,
+  isLoading,
+  subscriptionCount,
+}: OverviewCardsProps) {
+  const cards: OverviewCard[] = [
     {
-      label: '总 Stars',
+      label: "总 Stars",
       value: stats.totalStars.toString(),
       icon: Star,
-      iconClassName: 'text-yellow-500',
-      to: '/repos',
+      iconClassName: "text-yellow-500",
+      to: "/repos",
     },
     {
-      label: 'Open PR',
+      label: "Open PR",
       value: stats.openPRCount.total.toString(),
       icon: GitPullRequest,
-      iconClassName: 'text-green-500',
-      to: '/pulls?state=open&source=all',
+      iconClassName: "text-green-500",
+      to: "/pulls?state=open&source=all",
       tooltip: (
         <div className="space-y-1">
           <div className="flex items-center justify-between gap-6">
@@ -40,11 +58,11 @@ export function OverviewCards({ stats, isLoading, subscriptionCount }: OverviewC
       ),
     },
     {
-      label: 'Open Issue',
+      label: "Open Issue",
       value: stats.openIssueCount.total.toString(),
       icon: CircleDot,
-      iconClassName: 'text-blue-500',
-      to: '/issues?state=open&source=all',
+      iconClassName: "text-blue-500",
+      to: "/issues?state=open&source=all",
       tooltip: (
         <div className="space-y-1">
           <div className="flex items-center justify-between gap-6">
@@ -59,11 +77,11 @@ export function OverviewCards({ stats, isLoading, subscriptionCount }: OverviewC
       ),
     },
     {
-      label: '待更新 Release',
+      label: "待更新 Release",
       value: stats.pendingReleaseCount.toString(),
       icon: Rss,
-      iconClassName: 'text-purple-500',
-      to: '/releases',
+      iconClassName: "text-purple-500",
+      to: "/releases",
       tooltip: (
         <div className="space-y-1">
           <div className="flex items-center justify-between gap-6">
@@ -77,13 +95,13 @@ export function OverviewCards({ stats, isLoading, subscriptionCount }: OverviewC
       ),
     },
     {
-      label: '本月新增',
+      label: "本月新增",
       value: stats.newStarsThisMonth.toString(),
       icon: Calendar,
-      iconClassName: 'text-orange-500',
-      to: '/repos?sort=starred_at&direction=desc',
+      iconClassName: "text-orange-500",
+      to: "/repos?sort=starred_at&direction=desc",
     },
-  ] as const;
+  ];
 
   if (isLoading) {
     return (
@@ -108,10 +126,14 @@ export function OverviewCards({ stats, isLoading, subscriptionCount }: OverviewC
             <CardContent className="p-4">
               <div className="flex items-center justify-between gap-3">
                 <div className="min-w-0">
-                  <p className="text-sm text-muted-foreground truncate">{card.label}</p>
+                  <p className="text-sm text-muted-foreground truncate">
+                    {card.label}
+                  </p>
                   <p className="text-2xl font-bold mt-1">{card.value}</p>
                 </div>
-                <card.icon className={`h-8 w-8 ${card.iconClassName} opacity-80 shrink-0`} />
+                <card.icon
+                  className={`h-8 w-8 ${card.iconClassName} opacity-80 shrink-0`}
+                />
               </div>
             </CardContent>
           </Card>
@@ -141,4 +163,3 @@ export function OverviewCards({ stats, isLoading, subscriptionCount }: OverviewC
     </div>
   );
 }
-

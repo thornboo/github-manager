@@ -1,10 +1,10 @@
-import { useState, useEffect } from 'react';
-import { Loader2, Trash2 } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
-import { Switch } from '@/components/ui/switch';
-import { Label } from '@/components/ui/label';
+import { useState, useEffect } from "react";
+import { Loader2, Trash2 } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
 import {
   Dialog,
   DialogContent,
@@ -12,20 +12,10 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from '@/components/ui/dialog';
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from '@/components/ui/alert-dialog';
-import { useUpdateList, useDeleteList } from '@/hooks/useLists';
-import { StarList } from '@/types/github';
+} from "@/components/ui/dialog";
+import { ConfirmDialog } from "@/components/common/ConfirmDialog";
+import { useUpdateList, useDeleteList } from "@/hooks/useLists";
+import { StarList } from "@/types/github";
 
 interface ListEditDialogProps {
   list: StarList | null;
@@ -34,25 +24,30 @@ interface ListEditDialogProps {
   onDeleted?: () => void;
 }
 
-export function ListEditDialog({ list, open, onOpenChange, onDeleted }: ListEditDialogProps) {
-  const [name, setName] = useState('');
-  const [description, setDescription] = useState('');
+export function ListEditDialog({
+  list,
+  open,
+  onOpenChange,
+  onDeleted,
+}: ListEditDialogProps) {
+  const [name, setName] = useState("");
+  const [description, setDescription] = useState("");
   const [isPrivate, setIsPrivate] = useState(false);
-  
+
   const updateList = useUpdateList();
   const deleteList = useDeleteList();
 
   useEffect(() => {
     if (list) {
       setName(list.name);
-      setDescription(list.description || '');
+      setDescription(list.description || "");
       setIsPrivate(list.isPrivate);
     }
   }, [list]);
 
   const handleSave = async () => {
     if (!list || !name.trim()) return;
-    
+
     try {
       await updateList.mutateAsync({
         listId: list.id,
@@ -62,19 +57,19 @@ export function ListEditDialog({ list, open, onOpenChange, onDeleted }: ListEdit
       });
       onOpenChange(false);
     } catch (error) {
-      console.error('Failed to update list:', error);
+      console.error("Failed to update list:", error);
     }
   };
 
   const handleDelete = async () => {
     if (!list) return;
-    
+
     try {
       await deleteList.mutateAsync(list.id);
       onOpenChange(false);
       onDeleted?.();
     } catch (error) {
-      console.error('Failed to delete list:', error);
+      console.error("Failed to delete list:", error);
     }
   };
 
@@ -89,7 +84,7 @@ export function ListEditDialog({ list, open, onOpenChange, onDeleted }: ListEdit
             修改 List 的名称、描述和隐私设置
           </DialogDescription>
         </DialogHeader>
-        
+
         <div className="grid gap-4 py-4">
           <div className="grid gap-2">
             <Label htmlFor="name">名称</Label>
@@ -101,7 +96,7 @@ export function ListEditDialog({ list, open, onOpenChange, onDeleted }: ListEdit
               disabled={isPending}
             />
           </div>
-          
+
           <div className="grid gap-2">
             <Label htmlFor="description">描述</Label>
             <Textarea
@@ -113,7 +108,7 @@ export function ListEditDialog({ list, open, onOpenChange, onDeleted }: ListEdit
               disabled={isPending}
             />
           </div>
-          
+
           <div className="flex items-center justify-between">
             <div className="space-y-0.5">
               <Label htmlFor="private">私有</Label>
@@ -131,36 +126,32 @@ export function ListEditDialog({ list, open, onOpenChange, onDeleted }: ListEdit
         </div>
 
         <DialogFooter className="flex-col gap-2 sm:flex-row">
-          <AlertDialog>
-            <AlertDialogTrigger asChild>
-              <Button variant="destructive" disabled={isPending} className="w-full sm:w-auto">
+          <ConfirmDialog
+            trigger={
+              <Button
+                variant="destructive"
+                disabled={isPending}
+                className="w-full sm:w-auto"
+              >
                 <Trash2 className="h-4 w-4 mr-2" />
                 删除
               </Button>
-            </AlertDialogTrigger>
-            <AlertDialogContent>
-              <AlertDialogHeader>
-                <AlertDialogTitle>确定删除这个 List？</AlertDialogTitle>
-                <AlertDialogDescription>
-                  删除后无法恢复。List 中的仓库不会被取消收藏。
-                </AlertDialogDescription>
-              </AlertDialogHeader>
-              <AlertDialogFooter>
-                <AlertDialogCancel>取消</AlertDialogCancel>
-                <AlertDialogAction 
-                  onClick={handleDelete} 
-                  disabled={deleteList.isPending}
-                  className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                >
-                  {deleteList.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                  删除
-                </AlertDialogAction>
-              </AlertDialogFooter>
-            </AlertDialogContent>
-          </AlertDialog>
-          
-          <Button onClick={handleSave} disabled={!name.trim() || isPending} className="w-full sm:w-auto">
-            {updateList.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+            }
+            title="确定删除这个 List？"
+            description="删除后无法恢复。List 中的仓库不会被取消收藏。"
+            confirmText="删除"
+            confirmClassName="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            onConfirm={handleDelete}
+          />
+
+          <Button
+            onClick={handleSave}
+            disabled={!name.trim() || isPending}
+            className="w-full sm:w-auto"
+          >
+            {updateList.isPending && (
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            )}
             保存
           </Button>
         </DialogFooter>

@@ -1,6 +1,12 @@
-import { json, normalizeChatCompletionsEndpoint, okCors, safeReadJson, safeReadText } from './_utils';
+import {
+  json,
+  normalizeChatCompletionsEndpoint,
+  okCors,
+  safeReadJson,
+  safeReadText,
+} from "./_utils";
 
-export const config = { runtime: 'edge' };
+export const config = { runtime: "edge" };
 
 type OpenAIToolCall = {
   function?: { name?: string; arguments?: string };
@@ -31,7 +37,7 @@ interface ProviderConfig {
   baseUrl: string;
   apiKey: string;
   model: string;
-  requestFormat: 'openai' | 'custom';
+  requestFormat: "openai" | "custom";
 }
 
 interface SearchRequest {
@@ -42,25 +48,25 @@ interface SearchRequest {
 
 export default async function handler(req: Request): Promise<Response> {
   // CORS preflight
-  if (req.method === 'OPTIONS') {
+  if (req.method === "OPTIONS") {
     return okCors();
   }
 
-  if (req.method !== 'POST') {
-    return json({ matches: [], error: 'Method Not Allowed' }, { status: 405 });
+  if (req.method !== "POST") {
+    return json({ matches: [], error: "Method Not Allowed" }, { status: 405 });
   }
 
   let body: SearchRequest;
   try {
     body = await req.json();
   } catch {
-    return json({ matches: [], error: 'Invalid JSON' }, { status: 400 });
+    return json({ matches: [], error: "Invalid JSON" }, { status: 400 });
   }
 
   const { query, repos, provider } = body;
 
   if (!provider?.baseUrl || !provider?.apiKey) {
-    return json({ error: '请先配置 AI 服务商' }, { status: 400 });
+    return json({ error: "请先配置 AI 服务商" }, { status: 400 });
   }
 
   if (!query?.trim() || !repos || repos.length === 0) {
@@ -74,79 +80,97 @@ export default async function handler(req: Request): Promise<Response> {
       const parts: string[] = [`[ID: ${repo.id}] ${repo.full_name}`];
       if (repo.description) parts.push(`描述: ${repo.description}`);
       if (repo.language) parts.push(`语言: ${repo.language}`);
-      if (repo.topics.length > 0) parts.push(`Topics: ${repo.topics.join(', ')}`);
-      if (repo.localTags.length > 0) parts.push(`用户标签: ${repo.localTags.join(', ')}`);
+      if (repo.topics.length > 0)
+        parts.push(`Topics: ${repo.topics.join(", ")}`);
+      if (repo.localTags.length > 0)
+        parts.push(`用户标签: ${repo.localTags.join(", ")}`);
       if (repo.note) parts.push(`用户备注: ${repo.note}`);
-      if (repo.lists.length > 0) parts.push(`所属列表: ${repo.lists.join(', ')}`);
-      return parts.join(' | ');
+      if (repo.lists.length > 0)
+        parts.push(`所属列表: ${repo.lists.join(", ")}`);
+      return parts.join(" | ");
     })
-    .join('\n');
+    .join("\n");
 
   const userPrompt = `搜索查询: "${query}"\n\n仓库列表：\n${reposInfo}\n\n请找出与查询相关的仓库，返回 JSON 格式的匹配结果。`;
 
   const endpoint = normalizeChatCompletionsEndpoint(provider.baseUrl);
 
   const response = await fetch(endpoint, {
-    method: 'POST',
+    method: "POST",
     headers: {
       Authorization: `Bearer ${provider.apiKey}`,
-      'Content-Type': 'application/json',
+      "Content-Type": "application/json",
     },
     body: JSON.stringify({
-      model: provider.model || 'gpt-3.5-turbo',
+      model: provider.model || "gpt-3.5-turbo",
       messages: [
-        { role: 'system', content: systemPrompt },
-        { role: 'user', content: userPrompt },
+        { role: "system", content: systemPrompt },
+        { role: "user", content: userPrompt },
       ],
       tools: [
         {
-          type: 'function',
+          type: "function",
           function: {
-            name: 'return_search_results',
-            description: 'Return the search results with matching repositories',
+            name: "return_search_results",
+            description: "Return the search results with matching repositories",
             parameters: {
-              type: 'object',
+              type: "object",
               properties: {
                 matches: {
-                  type: 'array',
+                  type: "array",
                   items: {
-                    type: 'object',
+                    type: "object",
                     properties: {
-                      repoId: { type: 'number', description: 'The repository ID from [ID: xxx]' },
-                      relevance: { type: 'string', enum: ['high', 'medium', 'low'] },
-                      reason: { type: 'string', description: 'Brief explanation of why this repo matches' },
+                      repoId: {
+                        type: "number",
+                        description: "The repository ID from [ID: xxx]",
+                      },
+                      relevance: {
+                        type: "string",
+                        enum: ["high", "medium", "low"],
+                      },
+                      reason: {
+                        type: "string",
+                        description:
+                          "Brief explanation of why this repo matches",
+                      },
                     },
-                    required: ['repoId', 'relevance', 'reason'],
+                    required: ["repoId", "relevance", "reason"],
                     additionalProperties: false,
                   },
                 },
               },
-              required: ['matches'],
+              required: ["matches"],
               additionalProperties: false,
             },
           },
         },
       ],
-      tool_choice: { type: 'function', function: { name: 'return_search_results' } },
+      tool_choice: {
+        type: "function",
+        function: { name: "return_search_results" },
+      },
     }),
   });
 
   if (!response.ok) {
     if (response.status === 429) {
-      return json({ error: '请求过于频繁，请稍后再试' }, { status: 429 });
+      return json({ error: "请求过于频繁，请稍后再试" }, { status: 429 });
     }
     if (response.status === 402) {
-      return json({ error: 'AI 服务额度不足' }, { status: 402 });
+      return json({ error: "AI 服务额度不足" }, { status: 402 });
     }
     const errorText = await safeReadText(response);
     void errorText;
-    return json({ error: 'AI 搜索服务出错' }, { status: 500 });
+    return json({ error: "AI 搜索服务出错" }, { status: 500 });
   }
 
-  const aiResponse = (await safeReadJson<unknown>(response)) as OpenAIResponse | null;
+  const aiResponse = (await safeReadJson<unknown>(
+    response,
+  )) as OpenAIResponse | null;
 
   const toolCall = aiResponse?.choices?.[0]?.message?.tool_calls?.[0];
-  if (toolCall && toolCall.function?.name === 'return_search_results') {
+  if (toolCall && toolCall.function?.name === "return_search_results") {
     try {
       const result = JSON.parse(toolCall.function.arguments);
       return json(result);
@@ -156,7 +180,7 @@ export default async function handler(req: Request): Promise<Response> {
   }
 
   const content = aiResponse?.choices?.[0]?.message?.content;
-  if (typeof content === 'string' && content) {
+  if (typeof content === "string" && content) {
     const jsonMatch = content.match(/\{[\s\S]*"matches"[\s\S]*\}/);
     if (jsonMatch) {
       try {

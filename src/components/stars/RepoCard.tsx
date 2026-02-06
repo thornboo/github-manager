@@ -1,19 +1,34 @@
-import { StarredRepo } from '@/types/github';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
-import { Checkbox } from '@/components/ui/checkbox';
-import { Star, GitFork, ExternalLink, Clock, Sparkles, Check } from 'lucide-react';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { RepoTagsNotes } from './RepoTagsNotes';
-import { formatDistanceToNow } from 'date-fns';
-import { zhCN } from 'date-fns/locale';
-import { formatNumber, cn } from '@/lib/utils';
+import { StarredRepo } from "@/types/github";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
+import {
+  Star,
+  GitFork,
+  ExternalLink,
+  Clock,
+  Sparkles,
+  Check,
+} from "lucide-react";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { RepoTagsNotes } from "./RepoTagsNotes";
+import { formatDistanceToNow } from "date-fns";
+import { zhCN } from "date-fns/locale";
+import { cn } from "@/lib/utils";
+import { formatNumber } from "@/lib/formatting";
+import { getLanguageColors } from "@/lib/language-colors";
 import {
   Tooltip,
   TooltipContent,
   TooltipTrigger,
-} from '@/components/ui/tooltip';
+} from "@/components/ui/tooltip";
 
 interface RepoCardProps {
   repo: StarredRepo;
@@ -22,59 +37,45 @@ interface RepoCardProps {
   onAnalyze?: () => void;
 }
 
-// 基于编程语言的双色配色方案
-function getLanguageColors(language: string | null): { left: string; right: string } {
-  const colorMap: Record<string, { left: string; right: string }> = {
-    'TypeScript': { left: 'hsl(210 80% 55% / 0.5)', right: 'hsl(220 60% 35% / 0.4)' },
-    'JavaScript': { left: 'hsl(48 95% 55% / 0.5)', right: 'hsl(20 85% 55% / 0.45)' },
-    'Python': { left: 'hsl(210 60% 50% / 0.45)', right: 'hsl(48 90% 55% / 0.45)' },
-    'Rust': { left: 'hsl(25 55% 65% / 0.5)', right: 'hsl(10 55% 35% / 0.45)' },
-    'Go': { left: 'hsl(190 90% 45% / 0.5)', right: 'hsl(195 70% 35% / 0.45)' },
-    'Java': { left: 'hsl(30 70% 45% / 0.5)', right: 'hsl(210 45% 50% / 0.45)' },
-    'C++': { left: 'hsl(340 65% 50% / 0.45)', right: 'hsl(220 55% 50% / 0.45)' },
-    'C': { left: 'hsl(220 55% 50% / 0.45)', right: 'hsl(210 45% 40% / 0.4)' },
-    'Ruby': { left: 'hsl(0 70% 50% / 0.45)', right: 'hsl(350 55% 40% / 0.4)' },
-    'Swift': { left: 'hsl(20 85% 55% / 0.5)', right: 'hsl(350 70% 50% / 0.45)' },
-    'Kotlin': { left: 'hsl(280 60% 55% / 0.45)', right: 'hsl(25 85% 55% / 0.45)' },
-    'PHP': { left: 'hsl(230 35% 55% / 0.45)', right: 'hsl(260 40% 50% / 0.4)' },
-    'Vue': { left: 'hsl(153 65% 45% / 0.5)', right: 'hsl(165 55% 40% / 0.45)' },
-    'CSS': { left: 'hsl(220 70% 55% / 0.45)', right: 'hsl(264 65% 55% / 0.45)' },
-    'HTML': { left: 'hsl(20 85% 55% / 0.5)', right: 'hsl(350 70% 45% / 0.45)' },
-    'Shell': { left: 'hsl(120 30% 45% / 0.45)', right: 'hsl(100 25% 35% / 0.4)' },
-  };
-  
-  return colorMap[language || ''] || { left: 'hsl(260 70% 60% / 0.45)', right: 'hsl(190 70% 50% / 0.45)' };
-}
-
-export function RepoCard({ repo, isSelected, onToggleSelect, onAnalyze }: RepoCardProps) {
+export function RepoCard({
+  repo,
+  isSelected,
+  onToggleSelect,
+  onAnalyze,
+}: RepoCardProps) {
   const colors = getLanguageColors(repo.language);
-  
+
   return (
-    <Card 
+    <Card
       className={cn(
         "flex flex-col gradient-glass-card group relative transition-all duration-200",
-        isSelected && "ring-2 ring-primary ring-offset-2 ring-offset-background bg-primary/5"
+        isSelected &&
+          "ring-2 ring-primary ring-offset-2 ring-offset-background bg-primary/5",
       )}
-      style={{
-        '--card-color-left': colors.left,
-        '--card-color-right': colors.right,
-      } as React.CSSProperties}
+      style={
+        {
+          "--card-color-left": colors.left,
+          "--card-color-right": colors.right,
+        } as React.CSSProperties
+      }
     >
       {/* Selection checkbox - always visible */}
       {onToggleSelect && (
-        <div 
+        <div
           className="absolute top-3 left-3 z-10 cursor-pointer"
           onClick={(e) => {
             e.stopPropagation();
             onToggleSelect();
           }}
         >
-          <div className={cn(
-            "h-5 w-5 rounded border-2 flex items-center justify-center transition-all",
-            isSelected 
-              ? "bg-primary border-primary text-primary-foreground" 
-              : "bg-background/80 border-muted-foreground/40 hover:border-primary"
-          )}>
+          <div
+            className={cn(
+              "h-5 w-5 rounded border-2 flex items-center justify-center transition-all",
+              isSelected
+                ? "bg-primary border-primary text-primary-foreground"
+                : "bg-background/80 border-muted-foreground/40 hover:border-primary",
+            )}
+          >
             {isSelected && <Check className="h-3.5 w-3.5" />}
           </div>
         </div>
@@ -123,7 +124,10 @@ export function RepoCard({ repo, isSelected, onToggleSelect, onAnalyze }: RepoCa
               </a>
             </CardTitle>
             {repo.language && (
-              <Badge variant="secondary" className="mt-1.5 text-xs bg-primary/10 text-primary border-0">
+              <Badge
+                variant="secondary"
+                className="mt-1.5 text-xs bg-primary/10 text-primary border-0"
+              >
                 {repo.language}
               </Badge>
             )}
@@ -131,13 +135,13 @@ export function RepoCard({ repo, isSelected, onToggleSelect, onAnalyze }: RepoCa
         </div>
       </CardHeader>
       <CardContent className="flex flex-col">
-        <CardDescription 
+        <CardDescription
           className="flex-1 line-clamp-3 group-hover:line-clamp-none mb-4 transition-all duration-300"
-          title={repo.description || '暂无描述'}
+          title={repo.description || "暂无描述"}
         >
-          {repo.description || '暂无描述'}
+          {repo.description || "暂无描述"}
         </CardDescription>
-        
+
         <div className="flex items-center gap-4 text-sm text-muted-foreground mb-4 flex-wrap">
           <span className="inline-flex items-center gap-1.5 bg-muted/50 px-2 py-1 rounded-full">
             <Star className="h-3.5 w-3.5 text-yellow-500" />
@@ -149,16 +153,19 @@ export function RepoCard({ repo, isSelected, onToggleSelect, onAnalyze }: RepoCa
           </span>
           <span className="inline-flex items-center gap-1.5">
             <Clock className="h-3.5 w-3.5" />
-            {formatDistanceToNow(new Date(repo.pushed_at), { addSuffix: true, locale: zhCN })}
+            {formatDistanceToNow(new Date(repo.pushed_at), {
+              addSuffix: true,
+              locale: zhCN,
+            })}
           </span>
         </div>
 
         {repo.topics.length > 0 && (
           <div className="flex flex-wrap gap-1.5 mb-4">
-            {repo.topics.map(topic => (
-              <Badge 
-                key={topic} 
-                variant="outline" 
+            {repo.topics.map((topic) => (
+              <Badge
+                key={topic}
+                variant="outline"
                 className="text-xs bg-primary/8 border-primary/20 text-primary/80 hover:bg-primary/15 hover:text-primary dark:bg-white/8 dark:border-white/15 dark:text-white/70 dark:hover:bg-white/15 dark:hover:text-white/90 transition-colors"
               >
                 {topic}

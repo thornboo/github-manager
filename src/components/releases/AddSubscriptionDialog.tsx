@@ -1,15 +1,22 @@
-import { useState, useMemo, useEffect } from 'react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Checkbox } from '@/components/ui/checkbox';
-import { ScrollArea } from '@/components/ui/scroll-area';
-import { Separator } from '@/components/ui/separator';
-import { StarredRepo } from '@/types/github';
-import { useVerifyRepo } from '@/hooks/useReleasesFetch';
-import { Search, Plus, Loader2, Check, AlertCircle } from 'lucide-react';
-import { useToast } from '@/hooks/use-toast';
+import { useState, useMemo, useEffect } from "react";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+  DialogDescription,
+} from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Checkbox } from "@/components/ui/checkbox";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Separator } from "@/components/ui/separator";
+import { StarredRepo } from "@/types/github";
+import { useVerifyRepo } from "@/hooks/useReleasesFetch";
+import { Search, Plus, Loader2, Check, AlertCircle } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
 
 interface AddSubscriptionDialogProps {
   open: boolean;
@@ -27,20 +34,26 @@ export function AddSubscriptionDialog({
   onAddSubscriptions,
 }: AddSubscriptionDialogProps) {
   const { toast } = useToast();
-  const [searchQuery, setSearchQuery] = useState('');
+  const [searchQuery, setSearchQuery] = useState("");
   const [selectedRepos, setSelectedRepos] = useState<Set<string>>(new Set());
-  const [customRepo, setCustomRepo] = useState('');
-  const [customRepoToVerify, setCustomRepoToVerify] = useState<string | null>(null);
+  const [customRepo, setCustomRepo] = useState("");
+  const [customRepoToVerify, setCustomRepoToVerify] = useState<string | null>(
+    null,
+  );
 
-  const { data: verifiedRepo, isLoading: isVerifying, error: verifyError } = useVerifyRepo(customRepoToVerify);
+  const {
+    data: verifiedRepo,
+    isLoading: isVerifying,
+    error: verifyError,
+  } = useVerifyRepo(customRepoToVerify);
 
   // Filter starred repos based on search and exclude already subscribed
   const filteredStarredRepos = useMemo(() => {
-    const subscribedSet = new Set(subscribedRepos.map(r => r.toLowerCase()));
-    
+    const subscribedSet = new Set(subscribedRepos.map((r) => r.toLowerCase()));
+
     return starredRepos
-      .filter(repo => !subscribedSet.has(repo.full_name.toLowerCase()))
-      .filter(repo => {
+      .filter((repo) => !subscribedSet.has(repo.full_name.toLowerCase()))
+      .filter((repo) => {
         if (!searchQuery.trim()) return true;
         const query = searchQuery.toLowerCase();
         return (
@@ -52,7 +65,7 @@ export function AddSubscriptionDialog({
   }, [starredRepos, subscribedRepos, searchQuery]);
 
   const handleToggleRepo = (fullName: string) => {
-    setSelectedRepos(prev => {
+    setSelectedRepos((prev) => {
       const next = new Set(prev);
       if (next.has(fullName)) {
         next.delete(fullName);
@@ -66,31 +79,34 @@ export function AddSubscriptionDialog({
   const handleAddCustomRepo = () => {
     // Parse input - support both "owner/repo" and GitHub URLs
     let repoPath = customRepo.trim();
-    
+
     // Extract from GitHub URL if provided
     const urlMatch = repoPath.match(/github\.com\/([^/]+\/[^/]+)/);
     if (urlMatch) {
       repoPath = urlMatch[1];
     }
-    
+
     // Validate format
-    if (!repoPath.includes('/')) {
+    if (!repoPath.includes("/")) {
       toast({
-        title: '格式错误',
-        description: '请输入 owner/repo 格式的仓库名',
-        variant: 'destructive',
+        title: "格式错误",
+        description: "请输入 owner/repo 格式的仓库名",
+        variant: "destructive",
       });
       return;
     }
 
     // Remove any trailing parts (like /issues, /releases, etc.)
-    repoPath = repoPath.split('/').slice(0, 2).join('/');
-    
+    repoPath = repoPath.split("/").slice(0, 2).join("/");
+
     // Check if already selected or subscribed
-    if (selectedRepos.has(repoPath) || subscribedRepos.some(r => r.toLowerCase() === repoPath.toLowerCase())) {
+    if (
+      selectedRepos.has(repoPath) ||
+      subscribedRepos.some((r) => r.toLowerCase() === repoPath.toLowerCase())
+    ) {
       toast({
-        title: '已存在',
-        description: '该仓库已经在订阅列表中',
+        title: "已存在",
+        description: "该仓库已经在订阅列表中",
       });
       return;
     }
@@ -102,11 +118,11 @@ export function AddSubscriptionDialog({
   // Handle verification result
   useEffect(() => {
     if (verifiedRepo && customRepoToVerify) {
-      setSelectedRepos(prev => new Set([...prev, verifiedRepo.full_name]));
-      setCustomRepo('');
+      setSelectedRepos((prev) => new Set([...prev, verifiedRepo.full_name]));
+      setCustomRepo("");
       setCustomRepoToVerify(null);
       toast({
-        title: '添加成功',
+        title: "添加成功",
         description: `已添加 ${verifiedRepo.full_name}`,
       });
     }
@@ -115,14 +131,14 @@ export function AddSubscriptionDialog({
   const handleConfirm = () => {
     if (selectedRepos.size === 0) {
       toast({
-        title: '请选择仓库',
-        description: '至少选择一个仓库进行订阅',
+        title: "请选择仓库",
+        description: "至少选择一个仓库进行订阅",
       });
       return;
     }
 
-    const repos = Array.from(selectedRepos).map(fullName => {
-      const starred = starredRepos.find(r => r.full_name === fullName);
+    const repos = Array.from(selectedRepos).map((fullName) => {
+      const starred = starredRepos.find((r) => r.full_name === fullName);
       return {
         fullName,
         id: starred?.id,
@@ -134,9 +150,9 @@ export function AddSubscriptionDialog({
   };
 
   const handleClose = () => {
-    setSearchQuery('');
+    setSearchQuery("");
     setSelectedRepos(new Set());
-    setCustomRepo('');
+    setCustomRepo("");
     setCustomRepoToVerify(null);
     onOpenChange(false);
   };
@@ -165,19 +181,21 @@ export function AddSubscriptionDialog({
 
           {/* Starred repos list */}
           <div className="space-y-2">
-            <Label className="text-xs text-muted-foreground">从 Star 仓库中选择</Label>
+            <Label className="text-xs text-muted-foreground">
+              从 Star 仓库中选择
+            </Label>
             <ScrollArea className="h-48 rounded-md border">
               {filteredStarredRepos.length === 0 ? (
                 <div className="p-4 text-center text-sm text-muted-foreground">
-                  {starredRepos.length === 0 
-                    ? '暂无 Star 仓库'
-                    : searchQuery 
-                      ? '没有匹配的仓库'
-                      : '所有仓库都已订阅'}
+                  {starredRepos.length === 0
+                    ? "暂无 Star 仓库"
+                    : searchQuery
+                      ? "没有匹配的仓库"
+                      : "所有仓库都已订阅"}
                 </div>
               ) : (
                 <div className="p-2 space-y-1">
-                  {filteredStarredRepos.map(repo => (
+                  {filteredStarredRepos.map((repo) => (
                     <label
                       key={repo.id}
                       className="flex items-start gap-3 p-2 rounded-md hover:bg-muted cursor-pointer"
@@ -188,7 +206,9 @@ export function AddSubscriptionDialog({
                         className="shrink-0 mt-0.5"
                       />
                       <div className="min-w-0 flex-1">
-                        <p className="text-sm font-medium truncate">{repo.full_name}</p>
+                        <p className="text-sm font-medium truncate">
+                          {repo.full_name}
+                        </p>
                         {repo.description && (
                           <p className="text-xs text-muted-foreground line-clamp-2">
                             {repo.description}
@@ -206,22 +226,24 @@ export function AddSubscriptionDialog({
 
           {/* Custom repo input */}
           <div className="space-y-2">
-            <Label className="text-xs text-muted-foreground">或输入任意公开仓库</Label>
+            <Label className="text-xs text-muted-foreground">
+              或输入任意公开仓库
+            </Label>
             <div className="flex gap-2">
               <Input
                 placeholder="owner/repo 或 GitHub URL"
                 value={customRepo}
                 onChange={(e) => setCustomRepo(e.target.value)}
                 onKeyDown={(e) => {
-                  if (e.key === 'Enter') {
+                  if (e.key === "Enter") {
                     e.preventDefault();
                     handleAddCustomRepo();
                   }
                 }}
               />
-              <Button 
+              <Button
                 type="button"
-                variant="outline" 
+                variant="outline"
                 size="icon"
                 onClick={handleAddCustomRepo}
                 disabled={!customRepo.trim() || isVerifying}
@@ -244,13 +266,13 @@ export function AddSubscriptionDialog({
           {/* Selected count */}
           {selectedRepos.size > 0 && (
             <div className="flex flex-wrap gap-1">
-              {Array.from(selectedRepos).map(repo => (
-                <span 
+              {Array.from(selectedRepos).map((repo) => (
+                <span
                   key={repo}
                   className="inline-flex items-center gap-1 px-2 py-1 bg-primary/10 text-primary text-xs rounded-full"
                 >
                   <Check className="h-3 w-3" />
-                  {repo.split('/')[1]}
+                  {repo.split("/")[1]}
                 </span>
               ))}
             </div>

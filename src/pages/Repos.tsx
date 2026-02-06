@@ -1,14 +1,14 @@
-import { useState, useRef } from 'react';
-import { useAuth } from '@/contexts/AuthContext';
-import { LoginPage } from '@/components/auth/LoginPage';
-import { Header } from '@/components/layout/Header';
-import { AppSidebar } from '@/components/layout/AppSidebar';
-import { StarsDashboard } from '@/components/stars/StarsDashboard';
-import { ScrollToTop } from '@/components/layout/ScrollToTop';
-import { LocalDataProvider } from '@/contexts/LocalDataContext';
-import { Loader2, Menu } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
+import { useState, useRef } from "react";
+import { useAuth } from "@/contexts/AuthContext";
+import { LoginPage } from "@/components/auth/LoginPage";
+import { Header } from "@/components/layout/Header";
+import { AppSidebar } from "@/components/layout/AppSidebar";
+import { StarsDashboard } from "@/components/stars/StarsDashboard";
+import { ScrollToTop } from "@/components/layout/ScrollToTop";
+import { LocalDataProvider } from "@/contexts/LocalDataContext";
+import { Loader2, Menu } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 
 function AuthenticatedApp() {
   const [selectedList, setSelectedList] = useState<string | null>(null);
@@ -42,7 +42,10 @@ function AuthenticatedApp() {
       <div className="h-screen bg-background flex flex-col overflow-hidden">
         <Header
           sidebar={
-            <Sheet open={isMobileSidebarOpen} onOpenChange={setIsMobileSidebarOpen}>
+            <Sheet
+              open={isMobileSidebarOpen}
+              onOpenChange={setIsMobileSidebarOpen}
+            >
               <SheetTrigger asChild>
                 <Button variant="ghost" size="icon" className="md:hidden">
                   <Menu className="h-5 w-5" />
@@ -56,13 +59,15 @@ function AuthenticatedApp() {
         />
         <div className="flex-1 flex overflow-hidden">
           {/* Desktop sidebar */}
-          <div className="hidden md:flex h-full">
-            {sidebar}
-          </div>
-          
+          <div className="hidden md:flex h-full">{sidebar}</div>
+
           {/* Main content */}
           <main ref={mainRef} className="flex-1 p-6 overflow-y-auto">
-            <StarsDashboard selectedList={selectedList} selectedTag={selectedTag} selectedTopic={selectedTopic} />
+            <StarsDashboard
+              selectedList={selectedList}
+              selectedTag={selectedTag}
+              selectedTopic={selectedTopic}
+            />
           </main>
         </div>
         <ScrollToTop scrollContainerRef={mainRef} />

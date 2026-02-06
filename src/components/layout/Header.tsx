@@ -1,26 +1,26 @@
-import { Star, LogOut, Settings } from 'lucide-react';
-import { Link, useLocation } from 'react-router-dom';
-import { useAuth } from '@/contexts/AuthContext';
-import { useSyncContext } from '@/contexts/SyncContext';
-import { Button } from '@/components/ui/button';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Star, LogOut, Settings } from "lucide-react";
+import { Link, useLocation } from "react-router-dom";
+import { useAuth } from "@/contexts/AuthContext";
+import { useSyncContext } from "@/contexts/SyncContext";
+import { Button } from "@/components/ui/button";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
-import { ThemeToggle } from '@/components/ThemeToggle';
-import { SyncButton } from '@/components/layout/SyncButton';
-import { cn } from '@/lib/utils';
+} from "@/components/ui/dropdown-menu";
+import { ThemeToggle } from "@/components/ThemeToggle";
+import { SyncButton } from "@/components/layout/SyncButton";
+import { cn } from "@/lib/utils";
 
 const navItems = [
-  { path: '/dashboard', label: '首页' },
-  { path: '/repos', label: '仓库' },
-  { path: '/pulls', label: 'PR' },
-  { path: '/issues', label: 'Issues' },
-  { path: '/releases', label: 'Release 跟踪' },
+  { path: "/dashboard", label: "首页" },
+  { path: "/repos", label: "仓库" },
+  { path: "/pulls", label: "PR" },
+  { path: "/issues", label: "Issues" },
+  { path: "/releases", label: "Release 跟踪" },
 ];
 
 interface HeaderProps {
@@ -30,7 +30,7 @@ interface HeaderProps {
 export function Header({ sidebar }: HeaderProps) {
   const { user, isAuthenticated, logout } = useAuth();
   const location = useLocation();
-  
+
   // 从全局 Context 获取同步状态
   const syncContext = useSyncContext();
 
@@ -39,15 +39,15 @@ export function Header({ sidebar }: HeaderProps) {
       <div className="flex h-14 items-center px-4 gap-4">
         {/* Mobile menu trigger */}
         {isAuthenticated && sidebar && (
-          <div className="md:hidden">
-            {sidebar}
-          </div>
+          <div className="md:hidden">{sidebar}</div>
         )}
 
         {/* Logo */}
         <Link to="/dashboard" className="flex items-center gap-2">
           <Star className="h-6 w-6 text-primary fill-primary" />
-          <span className="font-semibold text-lg hidden sm:inline">GitHub Manager</span>
+          <span className="font-semibold text-lg hidden sm:inline">
+            GitHub Manager
+          </span>
           <span className="font-semibold text-lg sm:hidden">GM</span>
         </Link>
 
@@ -65,7 +65,7 @@ export function Header({ sidebar }: HeaderProps) {
                   "px-3 py-1.5 text-sm font-medium rounded-md transition-colors",
                   location.pathname === item.path
                     ? "bg-accent text-accent-foreground"
-                    : "text-muted-foreground hover:text-foreground hover:bg-accent/50"
+                    : "text-muted-foreground hover:text-foreground hover:bg-accent/50",
                 )}
               >
                 {item.label}
@@ -94,7 +94,9 @@ export function Header({ sidebar }: HeaderProps) {
               <Button variant="ghost" className="relative h-8 w-8 rounded-full">
                 <Avatar className="h-8 w-8">
                   <AvatarImage src={user.avatar_url} alt={user.login} />
-                  <AvatarFallback>{user.login.slice(0, 2).toUpperCase()}</AvatarFallback>
+                  <AvatarFallback>
+                    {user.login.slice(0, 2).toUpperCase()}
+                  </AvatarFallback>
                 </Avatar>
               </Button>
             </DropdownMenuTrigger>
@@ -125,7 +127,10 @@ export function Header({ sidebar }: HeaderProps) {
                 </a>
               </DropdownMenuItem>
               <DropdownMenuSeparator />
-              <DropdownMenuItem onClick={logout} className="cursor-pointer text-destructive">
+              <DropdownMenuItem
+                onClick={logout}
+                className="cursor-pointer text-destructive"
+              >
                 <LogOut className="mr-2 h-4 w-4" />
                 Sign out
               </DropdownMenuItem>

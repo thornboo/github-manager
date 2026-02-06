@@ -71,10 +71,10 @@ vercel dev
 
 本项目使用 [Personal Access Token (PAT)](https://github.com/settings/tokens) 进行身份认证。为遵循最小权限原则，建议仅授予以下权限：
 
-| 权限 | 用途 |
-|------|------|
-| `read:user` | 读取用户基本信息 |
-| `repo` | 访问私有仓库、Stars 列表、GitHub Lists |
+| 权限        | 用途                                   |
+| ----------- | -------------------------------------- |
+| `read:user` | 读取用户基本信息                       |
+| `repo`      | 访问私有仓库、Stars 列表、GitHub Lists |
 
 **隐私说明：** Token 仅保存在浏览器 `localStorage` 中，不会上传至任何服务端。所有 GitHub API 请求均由浏览器直接发起。
 
@@ -82,35 +82,35 @@ vercel dev
 
 如需使用 AI 智能分析功能，请在应用内进入 **设置** → **AI 服务配置** 进行设置。
 
-| 配置项 | 说明 | 示例值 |
-|--------|------|--------|
+| 配置项   | 说明                       | 示例值                      |
+| -------- | -------------------------- | --------------------------- |
 | Base URL | OpenAI 兼容的 API 端点地址 | `https://api.openai.com/v1` |
-| API Key | 服务商提供的访问密钥 | `sk-...` |
-| Model | 指定使用的模型名称 | `gpt-4o`、`gpt-3.5-turbo` |
+| API Key  | 服务商提供的访问密钥       | `sk-...`                    |
+| Model    | 指定使用的模型名称         | `gpt-4o`、`gpt-3.5-turbo`   |
 
 **支持的服务商：** 任何兼容 OpenAI API 格式的服务均可使用，包括 OpenAI 官方、Azure OpenAI、各类国产大模型 API 等。
 
 **相关 API 端点：**
 
-| 端点 | 方法 | 功能 |
-|------|------|------|
+| 端点                      | 方法 | 功能               |
+| ------------------------- | ---- | ------------------ |
 | `/api/test-ai-connection` | POST | 测试 AI 服务连通性 |
-| `/api/analyze-repos` | POST | 批量分析仓库内容 |
-| `/api/ai-search` | POST | 基于语义的智能搜索 |
+| `/api/analyze-repos`      | POST | 批量分析仓库内容   |
+| `/api/ai-search`          | POST | 基于语义的智能搜索 |
 
 **安全说明：** AI Key 仅在触发 AI 功能时发送到你自己部署的 `/api/*` 后端函数，再由服务端转发到 AI Provider。服务端不会持久化存储任何密钥信息。
 
 ## 技术栈
 
-| 类别 | 技术选型 |
-|------|----------|
-| 前端框架 | React 18 + TypeScript 5 |
-| 构建工具 | Vite 6 |
-| UI 组件库 | shadcn/ui + Radix UI |
-| 样式方案 | Tailwind CSS 3 |
-| 数据可视化 | Recharts |
-| 后端服务 | Vercel Serverless Functions |
-| 单元测试 | Vitest |
+| 类别       | 技术选型                    |
+| ---------- | --------------------------- |
+| 前端框架   | React 18 + TypeScript 5     |
+| 构建工具   | Vite 6                      |
+| UI 组件库  | shadcn/ui + Radix UI        |
+| 样式方案   | Tailwind CSS 3              |
+| 数据可视化 | Recharts                    |
+| 后端服务   | Vercel Serverless Functions |
+| 单元测试   | Vitest                      |
 
 ## 常见问题
 

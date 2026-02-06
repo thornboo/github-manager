@@ -5,15 +5,5 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
-export function formatNumber(num: number): string {
-  if (num < 1000) {
-    return num.toString();
-  }
-  if (num < 10000) {
-    return (num / 1000).toFixed(1).replace(/\.0$/, '') + 'k';
-  }
-  if (num < 1000000) {
-    return (num / 1000).toFixed(1).replace(/\.0$/, '') + 'k';
-  }
-  return (num / 1000000).toFixed(1).replace(/\.0$/, '') + 'M';
-}
+// 兼容旧导入路径：逐步迁移到 lib/formatting
+export { formatNumber } from "./formatting";

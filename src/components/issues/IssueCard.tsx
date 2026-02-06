@@ -1,11 +1,16 @@
-import { CircleDot, CheckCircle2, MessageSquare, ExternalLink } from 'lucide-react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { GitHubIssue } from '@/types/github';
-import { getRepoNameFromUrl } from '@/hooks/useIssues';
-import { formatDistanceToNow } from 'date-fns';
-import { zhCN } from 'date-fns/locale';
-import { cn } from '@/lib/utils';
+import {
+  CircleDot,
+  CheckCircle2,
+  MessageSquare,
+  ExternalLink,
+} from "lucide-react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { GitHubIssue } from "@/types/github";
+import { getRepoNameFromUrl } from "@/hooks/useIssues";
+import { formatDistanceToNow } from "date-fns";
+import { zhCN } from "date-fns/locale";
+import { cn } from "@/lib/utils";
 
 // 获取标签的背景颜色（带透明度）
 function getLabelBgColor(hexColor: string): string {
@@ -18,16 +23,18 @@ interface IssueCardProps {
 
 export function IssueCard({ issue }: IssueCardProps) {
   const repoName = getRepoNameFromUrl(issue.repository_url);
-  const isOpen = issue.state === 'open';
+  const isOpen = issue.state === "open";
 
   return (
     <Card className="group transition-all duration-200 hover:shadow-md hover:border-primary/50">
       <CardHeader className="pb-2">
         <div className="flex items-start gap-3">
-          <div className={cn(
-            'p-2 rounded-lg shrink-0',
-            isOpen ? 'bg-green-500/10' : 'bg-purple-500/10'
-          )}>
+          <div
+            className={cn(
+              "p-2 rounded-lg shrink-0",
+              isOpen ? "bg-green-500/10" : "bg-purple-500/10",
+            )}
+          >
             {isOpen ? (
               <CircleDot className="h-4 w-4 text-green-500" />
             ) : (
@@ -47,9 +54,16 @@ export function IssueCard({ issue }: IssueCardProps) {
               </a>
             </CardTitle>
             <p className="text-sm text-muted-foreground mt-1 flex items-center gap-2">
-              <span>{repoName} #{issue.number}</span>
+              <span>
+                {repoName} #{issue.number}
+              </span>
               <span>·</span>
-              <span>{formatDistanceToNow(new Date(issue.created_at), { addSuffix: true, locale: zhCN })}</span>
+              <span>
+                {formatDistanceToNow(new Date(issue.created_at), {
+                  addSuffix: true,
+                  locale: zhCN,
+                })}
+              </span>
               {issue.comments > 0 && (
                 <>
                   <span>·</span>

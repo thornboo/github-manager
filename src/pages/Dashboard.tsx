@@ -1,18 +1,18 @@
-import { useAuth } from '@/contexts/AuthContext';
-import { useSyncContext } from '@/contexts/SyncContext';
-import { LoginPage } from '@/components/auth/LoginPage';
-import { Header } from '@/components/layout/Header';
-import { Loader2 } from 'lucide-react';
-import { useDashboardStats } from '@/hooks/useDashboardStats';
-import { OverviewCards } from '@/components/dashboard/OverviewCards';
-import { OpenPRList } from '@/components/dashboard/OpenPRList';
-import { OpenIssueList } from '@/components/dashboard/OpenIssueList';
-import { RecentStars } from '@/components/dashboard/RecentStars';
-import { LanguagePieChart } from '@/components/dashboard/LanguagePieChart';
-import { StarTrendChart } from '@/components/dashboard/StarTrendChart';
-import { useReleases } from '@/hooks/useReleases';
-import { useReleasesFetch } from '@/hooks/useReleasesFetch';
-import { useEffect } from 'react';
+import { useAuth } from "@/contexts/AuthContext";
+import { useSyncContext } from "@/contexts/SyncContext";
+import { LoginPage } from "@/components/auth/LoginPage";
+import { Header } from "@/components/layout/Header";
+import { Loader2 } from "lucide-react";
+import { useDashboardStats } from "@/hooks/useDashboardStats";
+import { OverviewCards } from "@/components/dashboard/OverviewCards";
+import { OpenPRList } from "@/components/dashboard/OpenPRList";
+import { OpenIssueList } from "@/components/dashboard/OpenIssueList";
+import { RecentStars } from "@/components/dashboard/RecentStars";
+import { LanguagePieChart } from "@/components/dashboard/LanguagePieChart";
+import { StarTrendChart } from "@/components/dashboard/StarTrendChart";
+import { useReleases } from "@/hooks/useReleases";
+import { useReleasesFetch } from "@/hooks/useReleasesFetch";
+import { useEffect } from "react";
 
 function DashboardContent() {
   const { stars, pullRequests, issues, isLoading } = useSyncContext();
@@ -26,7 +26,10 @@ function DashboardContent() {
     const latestByRepo = new Map<string, (typeof releases)[number]>();
     releases.forEach((release) => {
       const existing = latestByRepo.get(release.repoFullName);
-      if (!existing || new Date(release.published_at) > new Date(existing.published_at)) {
+      if (
+        !existing ||
+        new Date(release.published_at) > new Date(existing.published_at)
+      ) {
         latestByRepo.set(release.repoFullName, release);
       }
     });
@@ -48,7 +51,11 @@ function DashboardContent() {
       <Header />
       <main className="flex-1 p-6 overflow-y-auto">
         <div className="max-w-6xl mx-auto space-y-6">
-          <OverviewCards stats={stats} isLoading={isLoading} subscriptionCount={subscriptions.length} />
+          <OverviewCards
+            stats={stats}
+            isLoading={isLoading}
+            subscriptionCount={subscriptions.length}
+          />
 
           <div className="grid gap-6 lg:grid-cols-2">
             <OpenPRList prs={stats.openPRs} isLoading={isLoading} />
@@ -59,7 +66,10 @@ function DashboardContent() {
 
           {/* 图表区域 */}
           <div className="grid gap-6 md:grid-cols-2">
-            <LanguagePieChart data={stats.languageDistribution} isLoading={isLoading} />
+            <LanguagePieChart
+              data={stats.languageDistribution}
+              isLoading={isLoading}
+            />
             <StarTrendChart data={stats.starTrend} isLoading={isLoading} />
           </div>
         </div>

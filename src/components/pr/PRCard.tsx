@@ -1,11 +1,17 @@
-import { GitPullRequest, GitMerge, XCircle, Clock, ExternalLink } from 'lucide-react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { GitHubPullRequest } from '@/types/github';
-import { getRepoNameFromUrl } from '@/hooks/usePullRequests';
-import { formatDistanceToNow } from 'date-fns';
-import { zhCN } from 'date-fns/locale';
-import { cn } from '@/lib/utils';
+import {
+  GitPullRequest,
+  GitMerge,
+  XCircle,
+  Clock,
+  ExternalLink,
+} from "lucide-react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { GitHubPullRequest } from "@/types/github";
+import { getRepoNameFromUrl } from "@/hooks/usePullRequests";
+import { formatDistanceToNow } from "date-fns";
+import { zhCN } from "date-fns/locale";
+import { cn } from "@/lib/utils";
 
 // 获取标签的背景颜色（带透明度）
 function getLabelBgColor(hexColor: string): string {
@@ -19,39 +25,39 @@ interface PRCardProps {
 export function PRCard({ pr }: PRCardProps) {
   const repoName = getRepoNameFromUrl(pr.repository_url);
   const isMerged = pr.pull_request?.merged_at !== null;
-  const isClosed = pr.state === 'closed';
+  const isClosed = pr.state === "closed";
   const isDraft = pr.draft;
 
   const getStatusInfo = () => {
     if (isMerged) {
       return {
         icon: GitMerge,
-        color: 'text-purple-500',
-        bgColor: 'bg-purple-500/10',
-        label: 'Merged',
+        color: "text-purple-500",
+        bgColor: "bg-purple-500/10",
+        label: "Merged",
       };
     }
     if (isClosed) {
       return {
         icon: XCircle,
-        color: 'text-destructive',
-        bgColor: 'bg-destructive/10',
-        label: 'Closed',
+        color: "text-destructive",
+        bgColor: "bg-destructive/10",
+        label: "Closed",
       };
     }
     if (isDraft) {
       return {
         icon: Clock,
-        color: 'text-muted-foreground',
-        bgColor: 'bg-muted',
-        label: 'Draft',
+        color: "text-muted-foreground",
+        bgColor: "bg-muted",
+        label: "Draft",
       };
     }
     return {
       icon: GitPullRequest,
-      color: 'text-green-500',
-      bgColor: 'bg-green-500/10',
-      label: 'Open',
+      color: "text-green-500",
+      bgColor: "bg-green-500/10",
+      label: "Open",
     };
   };
 
@@ -62,8 +68,8 @@ export function PRCard({ pr }: PRCardProps) {
     <Card className="group transition-all duration-200 hover:shadow-md hover:border-primary/50">
       <CardHeader className="pb-2">
         <div className="flex items-start gap-3">
-          <div className={cn('p-2 rounded-lg shrink-0', status.bgColor)}>
-            <StatusIcon className={cn('h-4 w-4', status.color)} />
+          <div className={cn("p-2 rounded-lg shrink-0", status.bgColor)}>
+            <StatusIcon className={cn("h-4 w-4", status.color)} />
           </div>
           <div className="flex-1 min-w-0">
             <CardTitle className="text-base font-medium leading-snug">
@@ -78,7 +84,11 @@ export function PRCard({ pr }: PRCardProps) {
               </a>
             </CardTitle>
             <p className="text-sm text-muted-foreground mt-1">
-              {repoName} #{pr.number} · {formatDistanceToNow(new Date(pr.created_at), { addSuffix: true, locale: zhCN })}
+              {repoName} #{pr.number} ·{" "}
+              {formatDistanceToNow(new Date(pr.created_at), {
+                addSuffix: true,
+                locale: zhCN,
+              })}
             </p>
           </div>
         </div>

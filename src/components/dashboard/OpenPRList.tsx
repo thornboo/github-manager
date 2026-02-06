@@ -1,12 +1,18 @@
-import { Link } from 'react-router-dom';
-import { ArrowRight, ExternalLink, GitPullRequest } from 'lucide-react';
-import { formatDistanceToNow } from 'date-fns';
-import { zhCN } from 'date-fns/locale';
-import { Badge } from '@/components/ui/badge';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Skeleton } from '@/components/ui/skeleton';
-import { GitHubPullRequest } from '@/types/github';
-import { getRepoNameFromUrl } from '@/hooks/usePullRequests';
+import { Link } from "react-router-dom";
+import { ArrowRight, ExternalLink, GitPullRequest } from "lucide-react";
+import { formatDistanceToNow } from "date-fns";
+import { zhCN } from "date-fns/locale";
+import { Badge } from "@/components/ui/badge";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Skeleton } from "@/components/ui/skeleton";
+import { GitHubPullRequest } from "@/types/github";
+import { getRepoNameFromUrl } from "@/hooks/usePullRequests";
 
 function getLabelBgColor(hexColor: string): string {
   return `#${hexColor}30`;
@@ -69,14 +75,22 @@ export function OpenPRList({ prs, isLoading }: OpenPRListProps) {
                           {repoName}#{pr.number}
                         </div>
                         <div className="text-xs text-muted-foreground shrink-0">
-                          {formatDistanceToNow(new Date(pr.updated_at), { addSuffix: true, locale: zhCN })}
+                          {formatDistanceToNow(new Date(pr.updated_at), {
+                            addSuffix: true,
+                            locale: zhCN,
+                          })}
                         </div>
                       </div>
 
                       <div className="flex items-center gap-2 mt-1 min-w-0">
-                        <div className="text-sm font-medium truncate flex-1">{pr.title}</div>
+                        <div className="text-sm font-medium truncate flex-1">
+                          {pr.title}
+                        </div>
                         {pr.draft && (
-                          <Badge variant="secondary" className="text-[10px] px-1.5 py-0.5 shrink-0">
+                          <Badge
+                            variant="secondary"
+                            className="text-[10px] px-1.5 py-0.5 shrink-0"
+                          >
                             Draft
                           </Badge>
                         )}
@@ -120,4 +134,3 @@ export function OpenPRList({ prs, isLoading }: OpenPRListProps) {
     </Card>
   );
 }
-

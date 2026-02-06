@@ -1,25 +1,18 @@
-import { Input } from '@/components/ui/input';
-import { Button } from '@/components/ui/button';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
-import { LayoutGrid, List, Search, X, ArrowUpDown, Sparkles, Loader2 } from 'lucide-react';
-import { AIAnalysisButton, AnalysisScope, AnalysisDepth } from './AIAnalysisButton';
-import { RepoSuggestion } from '@/hooks/useAIAnalysis';
+import { Button } from "@/components/ui/button";
+import { LayoutGrid, List } from "lucide-react";
+import { AIAnalysisButton } from "./AIAnalysisButton";
+import { StarsSearchBar } from "./StarsSearchBar";
+import { StarsFilter } from "./StarsFilter";
+import type { AnalysisDepth, AnalysisScope, RepoSuggestion } from "@/types/ai";
+import type {
+  SearchMode,
+  SortDirection,
+  SortOption,
+  ViewMode,
+} from "@/types/ui";
 
-export type SortField = 'stars' | 'updated' | 'name' | 'forks' | 'starred';
-export type SortDirection = 'asc' | 'desc';
-export type SearchMode = 'normal' | 'ai';
+export type SortField = SortOption;
+export type { SortDirection, SearchMode, ViewMode } from "@/types/ui";
 
 interface StarsToolbarProps {
   search: string;
@@ -27,8 +20,8 @@ interface StarsToolbarProps {
   language: string | null;
   onLanguageChange: (value: string | null) => void;
   languages: string[];
-  viewMode: 'grid' | 'list';
-  onViewModeChange: (mode: 'grid' | 'list') => void;
+  viewMode: ViewMode;
+  onViewModeChange: (mode: ViewMode) => void;
   sortField: SortField;
   sortDirection: SortDirection;
   onSortChange: (field: SortField, direction: SortDirection) => void;
@@ -58,18 +51,6 @@ interface StarsToolbarProps {
   isAISearching: boolean;
   onAISearch: () => void;
 }
-
-const SORT_OPTIONS = [
-  { value: 'starred-desc', label: '最近收藏', field: 'starred' as SortField, direction: 'desc' as SortDirection },
-  { value: 'starred-asc', label: '最早收藏', field: 'starred' as SortField, direction: 'asc' as SortDirection },
-  { value: 'stars-desc', label: 'Stars 最多', field: 'stars' as SortField, direction: 'desc' as SortDirection },
-  { value: 'stars-asc', label: 'Stars 最少', field: 'stars' as SortField, direction: 'asc' as SortDirection },
-  { value: 'updated-desc', label: '最近更新', field: 'updated' as SortField, direction: 'desc' as SortDirection },
-  { value: 'updated-asc', label: '最早更新', field: 'updated' as SortField, direction: 'asc' as SortDirection },
-  { value: 'name-asc', label: '名称 A-Z', field: 'name' as SortField, direction: 'asc' as SortDirection },
-  { value: 'name-desc', label: '名称 Z-A', field: 'name' as SortField, direction: 'desc' as SortDirection },
-  { value: 'forks-desc', label: 'Forks 最多', field: 'forks' as SortField, direction: 'desc' as SortDirection },
-];
 
 export function StarsToolbar({
   search,
@@ -108,138 +89,42 @@ export function StarsToolbar({
   isAISearching,
   onAISearch,
 }: StarsToolbarProps) {
-  const currentSortValue = `${sortField}-${sortDirection}`;
-  
-  const handleSortChange = (value: string) => {
-    const option = SORT_OPTIONS.find(opt => opt.value === value);
-    if (option) {
-      onSortChange(option.field, option.direction);
-    }
-  };
-
-  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === 'Enter' && searchMode === 'ai' && search.trim()) {
-      onAISearch();
-    }
-  };
-
   return (
     <div className="space-y-4">
       <div className="flex flex-col sm:flex-row gap-3">
-        {/* Search with mode toggle */}
-        <div className="relative flex-1 flex gap-2">
-          <div className="relative flex-1">
-            {isAISearching ? (
-              <Loader2 className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground animate-spin" />
-            ) : searchMode === 'ai' ? (
-              <Sparkles className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-primary" />
-            ) : (
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            )}
-            <Input
-              placeholder={searchMode === 'ai' ? "用自然语言描述你要找的仓库..." : "搜索仓库名称、描述或标签..."}
-              value={search}
-              onChange={(e) => onSearchChange(e.target.value)}
-              onKeyDown={handleKeyDown}
-              className="pl-9 pr-9"
-            />
-            {search && (
-              <button
-                onClick={() => onSearchChange('')}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-              >
-                <X className="h-4 w-4" />
-              </button>
-            )}
-          </div>
-          
-          {/* Search Mode Toggle */}
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="outline" size="icon" className="shrink-0" disabled={!aiEnabled}>
-                {searchMode === 'ai' ? (
-                  <Sparkles className="h-4 w-4 text-primary" />
-                ) : (
-                  <Search className="h-4 w-4" />
-                )}
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuItem onClick={() => onSearchModeChange('normal')}>
-                <Search className="h-4 w-4 mr-2" />
-                普通搜索
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => onSearchModeChange('ai')} disabled={!aiEnabled}>
-                <Sparkles className="h-4 w-4 mr-2" />
-                AI 智能搜索
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
+        <StarsSearchBar
+          search={search}
+          onSearchChange={onSearchChange}
+          searchMode={searchMode}
+          onSearchModeChange={onSearchModeChange}
+          isAISearching={isAISearching}
+          onAISearch={onAISearch}
+          aiEnabled={aiEnabled}
+        />
 
-          {/* AI Search Button (only show when AI mode is active and has query) */}
-          {searchMode === 'ai' && search.trim() && (
-            <Button
-              onClick={onAISearch}
-              disabled={isAISearching || !aiEnabled}
-              size="sm"
-              className="shrink-0"
-            >
-              {isAISearching ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : (
-                '搜索'
-              )}
-            </Button>
-          )}
-        </div>
-
-        {/* Language filter */}
-        <Select
-          value={language || 'all'}
-          onValueChange={(value) => onLanguageChange(value === 'all' ? null : value)}
-        >
-          <SelectTrigger className="w-full sm:w-[140px]">
-            <SelectValue placeholder="全部语言" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">全部语言</SelectItem>
-            {languages.map(lang => (
-              <SelectItem key={lang} value={lang}>
-                {lang}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-
-        {/* Sort */}
-        <Select value={currentSortValue} onValueChange={handleSortChange}>
-          <SelectTrigger className="w-full sm:w-[140px]">
-            <ArrowUpDown className="h-4 w-4 mr-2" />
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            {SORT_OPTIONS.map(option => (
-              <SelectItem key={option.value} value={option.value}>
-                {option.label}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        <StarsFilter
+          language={language}
+          onLanguageChange={onLanguageChange}
+          languages={languages}
+          sortField={sortField}
+          sortDirection={sortDirection}
+          onSortChange={onSortChange}
+        />
 
         {/* View mode toggle */}
         <div className="flex border rounded-md h-9">
           <Button
-            variant={viewMode === 'grid' ? 'secondary' : 'ghost'}
+            variant={viewMode === "card" ? "secondary" : "ghost"}
             size="icon"
-            onClick={() => onViewModeChange('grid')}
+            onClick={() => onViewModeChange("card")}
             className="rounded-r-none h-full w-9"
           >
             <LayoutGrid className="h-4 w-4" />
           </Button>
           <Button
-            variant={viewMode === 'list' ? 'secondary' : 'ghost'}
+            variant={viewMode === "list" ? "secondary" : "ghost"}
             size="icon"
-            onClick={() => onViewModeChange('list')}
+            onClick={() => onViewModeChange("list")}
             className="rounded-l-none h-full w-9"
           >
             <List className="h-4 w-4" />
@@ -275,7 +160,7 @@ export function StarsToolbar({
             显示 {filteredCount} / {totalCount} 个结果
           </span>
         )}
-        
+
         {/* Selection status and batch actions */}
         <div className="flex items-center gap-2">
           {selectedCount > 0 && (
@@ -283,15 +168,30 @@ export function StarsToolbar({
               已选中 {selectedCount} 个
             </span>
           )}
-          
-          <Button variant="ghost" size="sm" className="h-7 px-2 text-xs" onClick={onSelectAll}>
+
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-7 px-2 text-xs"
+            onClick={onSelectAll}
+          >
             全选
           </Button>
-          <Button variant="ghost" size="sm" className="h-7 px-2 text-xs" onClick={onSelectFiltered}>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-7 px-2 text-xs"
+            onClick={onSelectFiltered}
+          >
             筛选全选
           </Button>
           {selectedCount > 0 && (
-            <Button variant="ghost" size="sm" className="h-7 px-2 text-xs" onClick={onDeselectAll}>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-7 px-2 text-xs"
+              onClick={onDeselectAll}
+            >
               取消选择
             </Button>
           )}

@@ -1,16 +1,16 @@
 export const corsHeaders: Record<string, string> = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, content-type',
-  'Access-Control-Allow-Methods': 'POST, OPTIONS',
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers": "authorization, content-type",
+  "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
 
 export function okCors(): Response {
-  return new Response('ok', { headers: corsHeaders });
+  return new Response("ok", { headers: corsHeaders });
 }
 
 export function json(data: unknown, init: ResponseInit = {}): Response {
   const headers = new Headers(init.headers);
-  headers.set('Content-Type', 'application/json');
+  headers.set("Content-Type", "application/json");
   for (const [k, v] of Object.entries(corsHeaders)) {
     if (!headers.has(k)) headers.set(k, v);
   }
@@ -19,7 +19,7 @@ export function json(data: unknown, init: ResponseInit = {}): Response {
 
 export function normalizeChatCompletionsEndpoint(baseUrl: string): string {
   let endpoint = baseUrl.trim();
-  if (endpoint.endsWith('/')) {
+  if (endpoint.endsWith("/")) {
     endpoint = endpoint.slice(0, -1);
   }
 
@@ -27,11 +27,11 @@ export function normalizeChatCompletionsEndpoint(baseUrl: string): string {
   // - https://api.openai.com
   // - https://api.openai.com/v1
   // 以及已经完整提供到 /chat/completions 的情况
-  if (!endpoint.endsWith('/chat/completions')) {
-    if (!endpoint.endsWith('/v1')) {
-      endpoint += '/v1';
+  if (!endpoint.endsWith("/chat/completions")) {
+    if (!endpoint.endsWith("/v1")) {
+      endpoint += "/v1";
     }
-    endpoint += '/chat/completions';
+    endpoint += "/chat/completions";
   }
 
   return endpoint;
@@ -41,7 +41,7 @@ export async function safeReadText(res: Response): Promise<string> {
   try {
     return await res.text();
   } catch {
-    return '';
+    return "";
   }
 }
 
@@ -62,5 +62,5 @@ export function safeJsonParse(text: string): unknown | null {
 }
 
 export function isRecord(value: unknown): value is Record<string, unknown> {
-  return !!value && typeof value === 'object' && !Array.isArray(value);
+  return !!value && typeof value === "object" && !Array.isArray(value);
 }

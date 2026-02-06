@@ -1,11 +1,11 @@
-import { ReleaseSubscription } from '@/types/github';
-import { Card, CardContent } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import { Skeleton } from '@/components/ui/skeleton';
-import { Package, ExternalLink, Trash2, Rss, Clock } from 'lucide-react';
-import { formatDistanceToNow } from 'date-fns';
-import { zhCN } from 'date-fns/locale';
+import { ReleaseSubscription } from "@/types/github";
+import { Card, CardContent } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Package, ExternalLink, Trash2, Rss, Clock } from "lucide-react";
+import { formatDistanceToNow } from "date-fns";
+import { zhCN } from "date-fns/locale";
 
 interface SubscriptionListProps {
   subscriptions: ReleaseSubscription[];
@@ -13,11 +13,15 @@ interface SubscriptionListProps {
   isLoading?: boolean;
 }
 
-export function SubscriptionList({ subscriptions, onRemove, isLoading }: SubscriptionListProps) {
+export function SubscriptionList({
+  subscriptions,
+  onRemove,
+  isLoading,
+}: SubscriptionListProps) {
   if (isLoading) {
     return (
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-        {[1, 2, 3, 4, 5, 6].map(i => (
+        {[1, 2, 3, 4, 5, 6].map((i) => (
           <Skeleton key={i} className="h-36" />
         ))}
       </div>
@@ -40,8 +44,11 @@ export function SubscriptionList({ subscriptions, onRemove, isLoading }: Subscri
 
   return (
     <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-      {subscriptions.map(sub => (
-        <Card key={sub.repoFullName} className="hover:border-primary/50 transition-colors group">
+      {subscriptions.map((sub) => (
+        <Card
+          key={sub.repoFullName}
+          className="hover:border-primary/50 transition-colors group"
+        >
           <CardContent className="p-4">
             <div className="flex items-start justify-between gap-2 mb-3">
               <div className="flex items-center gap-2 min-w-0">
@@ -49,7 +56,7 @@ export function SubscriptionList({ subscriptions, onRemove, isLoading }: Subscri
                   <Package className="h-4 w-4 text-primary" />
                 </div>
                 <div className="min-w-0">
-                  <a 
+                  <a
                     href={`https://github.com/${sub.repoFullName}`}
                     target="_blank"
                     rel="noopener noreferrer"
@@ -59,7 +66,7 @@ export function SubscriptionList({ subscriptions, onRemove, isLoading }: Subscri
                   </a>
                 </div>
               </div>
-              
+
               <Button
                 variant="ghost"
                 size="icon"
@@ -85,20 +92,24 @@ export function SubscriptionList({ subscriptions, onRemove, isLoading }: Subscri
                     <ExternalLink className="h-3 w-3" />
                   </a>
                 </div>
-                
-                {sub.latestRelease.name && sub.latestRelease.name !== sub.latestRelease.tagName && (
-                  <p className="text-sm text-muted-foreground truncate">
-                    {sub.latestRelease.name}
-                  </p>
-                )}
-                
+
+                {sub.latestRelease.name &&
+                  sub.latestRelease.name !== sub.latestRelease.tagName && (
+                    <p className="text-sm text-muted-foreground truncate">
+                      {sub.latestRelease.name}
+                    </p>
+                  )}
+
                 <div className="flex items-center gap-1 text-xs text-muted-foreground">
                   <Clock className="h-3 w-3" />
                   <span>
-                    {formatDistanceToNow(new Date(sub.latestRelease.publishedAt), {
-                      addSuffix: true,
-                      locale: zhCN,
-                    })}
+                    {formatDistanceToNow(
+                      new Date(sub.latestRelease.publishedAt),
+                      {
+                        addSuffix: true,
+                        locale: zhCN,
+                      },
+                    )}
                   </span>
                 </div>
               </div>

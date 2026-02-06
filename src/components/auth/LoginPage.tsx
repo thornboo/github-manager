@@ -1,34 +1,52 @@
-import { useState, type ReactNode } from 'react';
-import { useAuth } from '@/contexts/AuthContext';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { CircleDot, ExternalLink, FolderOpen, GitPullRequest, Loader2, Star, Tag, Eye, EyeOff } from 'lucide-react';
+import { useState, type ReactNode } from "react";
+import { useAuth } from "@/contexts/AuthContext";
+import { Button } from "@/components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  CircleDot,
+  ExternalLink,
+  FolderOpen,
+  GitPullRequest,
+  Loader2,
+  Star,
+  Tag,
+  Eye,
+  EyeOff,
+} from "lucide-react";
 
 export function LoginPage() {
   const { login, isLoading } = useAuth();
-  const [token, setToken] = useState('');
+  const [token, setToken] = useState("");
   const [showToken, setShowToken] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isSigningIn, setIsSigningIn] = useState(false);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!token.trim()) {
-      setError('请输入 Personal Access Token');
+      setError("请输入 Personal Access Token");
       return;
     }
 
     setIsSigningIn(true);
     setError(null);
-    
+
     try {
       await login(token.trim());
     } catch (err) {
-      console.error('Login failed:', err);
-      setError(err instanceof Error ? err.message : '登录失败，请检查 Token 是否正确');
+      console.error("Login failed:", err);
+      setError(
+        err instanceof Error ? err.message : "登录失败，请检查 Token 是否正确",
+      );
       setIsSigningIn(false);
     }
   };
@@ -53,7 +71,8 @@ export function LoginPage() {
               </div>
               <CardTitle className="text-2xl">欢迎使用</CardTitle>
               <CardDescription className="text-base">
-                使用 GitHub Personal Access Token 登录，管理你的 Stars、PR 和 Issues
+                使用 GitHub Personal Access Token 登录，管理你的 Stars、PR 和
+                Issues
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -63,7 +82,7 @@ export function LoginPage() {
                   <div className="relative">
                     <Input
                       id="token"
-                      type={showToken ? 'text' : 'password'}
+                      type={showToken ? "text" : "password"}
                       value={token}
                       onChange={(e) => setToken(e.target.value)}
                       placeholder="ghp_xxxxxxxxxxxxxxxxxxxx"
@@ -75,14 +94,16 @@ export function LoginPage() {
                       onClick={() => setShowToken(!showToken)}
                       className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
                     >
-                      {showToken ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                      {showToken ? (
+                        <EyeOff className="h-4 w-4" />
+                      ) : (
+                        <Eye className="h-4 w-4" />
+                      )}
                     </button>
                   </div>
                 </div>
 
-                {error && (
-                  <p className="text-sm text-destructive">{error}</p>
-                )}
+                {error && <p className="text-sm text-destructive">{error}</p>}
 
                 <Button
                   type="submit"
@@ -107,17 +128,40 @@ export function LoginPage() {
                     <ExternalLink className="h-3 w-3" />
                   </a>
                   <p className="text-xs text-muted-foreground">
-                    建议最少勾选 <code className="bg-muted px-1 rounded">repo</code> 和 <code className="bg-muted px-1 rounded">read:user</code> 权限
+                    建议最少勾选{" "}
+                    <code className="bg-muted px-1 rounded">repo</code> 和{" "}
+                    <code className="bg-muted px-1 rounded">read:user</code>{" "}
+                    权限
                   </p>
                 </div>
 
                 {/* Mobile: show features in compact form to avoid vertical scrolling */}
                 <div className="grid grid-cols-2 gap-3 pt-3 border-t md:hidden">
-                  <FeatureMini icon={<Star className="h-4 w-4" />} title="Stars" desc="浏览与搜索" />
-                  <FeatureMini icon={<GitPullRequest className="h-4 w-4" />} title="PR" desc="状态筛选" />
-                  <FeatureMini icon={<CircleDot className="h-4 w-4" />} title="Issues" desc="快速检索" />
-                  <FeatureMini icon={<FolderOpen className="h-4 w-4" />} title="Lists" desc="分类整理" />
-                  <FeatureMini icon={<Tag className="h-4 w-4" />} title="本地标签" desc="备注管理" />
+                  <FeatureMini
+                    icon={<Star className="h-4 w-4" />}
+                    title="Stars"
+                    desc="浏览与搜索"
+                  />
+                  <FeatureMini
+                    icon={<GitPullRequest className="h-4 w-4" />}
+                    title="PR"
+                    desc="状态筛选"
+                  />
+                  <FeatureMini
+                    icon={<CircleDot className="h-4 w-4" />}
+                    title="Issues"
+                    desc="快速检索"
+                  />
+                  <FeatureMini
+                    icon={<FolderOpen className="h-4 w-4" />}
+                    title="Lists"
+                    desc="分类整理"
+                  />
+                  <FeatureMini
+                    icon={<Tag className="h-4 w-4" />}
+                    title="本地标签"
+                    desc="备注管理"
+                  />
                 </div>
 
                 <p className="text-center text-xs text-muted-foreground pt-2">
@@ -165,7 +209,8 @@ export function LoginPage() {
               </div>
             </CardContent>
             <div className="border-t px-6 py-4 text-xs text-muted-foreground">
-              Token/Key 保存在浏览器本地；AI 功能仅在你触发时通过 <code className="bg-muted px-1 rounded">/api</code> 转发到服务商。
+              Token/Key 保存在浏览器本地；AI 功能仅在你触发时通过{" "}
+              <code className="bg-muted px-1 rounded">/api</code> 转发到服务商。
             </div>
           </Card>
         </div>
@@ -174,7 +219,15 @@ export function LoginPage() {
   );
 }
 
-function FeatureItem({ icon, title, description }: { icon: ReactNode; title: string; description: string }) {
+function FeatureItem({
+  icon,
+  title,
+  description,
+}: {
+  icon: ReactNode;
+  title: string;
+  description: string;
+}) {
   return (
     <div className="rounded-lg border bg-card p-4">
       <div className="flex items-start gap-3">
@@ -188,7 +241,15 @@ function FeatureItem({ icon, title, description }: { icon: ReactNode; title: str
   );
 }
 
-function FeatureMini({ icon, title, desc }: { icon: ReactNode; title: string; desc: string }) {
+function FeatureMini({
+  icon,
+  title,
+  desc,
+}: {
+  icon: ReactNode;
+  title: string;
+  desc: string;
+}) {
   return (
     <div className="rounded-md border bg-card p-3">
       <div className="flex items-center gap-2">

@@ -1,11 +1,11 @@
-import { StarredRepo } from '@/types/github';
-import { Badge } from '@/components/ui/badge';
-import { Star, GitFork, ExternalLink, Clock } from 'lucide-react';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { RepoTagsNotes } from './RepoTagsNotes';
-import { formatDistanceToNow } from 'date-fns';
-import { zhCN } from 'date-fns/locale';
-import { formatNumber } from '@/lib/utils';
+import { StarredRepo } from "@/types/github";
+import { Badge } from "@/components/ui/badge";
+import { Star, GitFork, ExternalLink, Clock } from "lucide-react";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { RepoTagsNotes } from "./RepoTagsNotes";
+import { formatDistanceToNow } from "date-fns";
+import { zhCN } from "date-fns/locale";
+import { formatNumber } from "@/lib/formatting";
 
 interface RepoListProps {
   repos: StarredRepo[];
@@ -14,7 +14,7 @@ interface RepoListProps {
 export function RepoList({ repos }: RepoListProps) {
   return (
     <div className="divide-y">
-      {repos.map(repo => (
+      {repos.map((repo) => (
         <RepoListItem key={repo.id} repo={repo} />
       ))}
     </div>
@@ -27,9 +27,11 @@ function RepoListItem({ repo }: { repo: StarredRepo }) {
       <div className="flex items-start gap-3">
         <Avatar className="h-8 w-8 flex-shrink-0">
           <AvatarImage src={repo.owner.avatar_url} alt={repo.owner.login} />
-          <AvatarFallback>{repo.owner.login.slice(0, 2).toUpperCase()}</AvatarFallback>
+          <AvatarFallback>
+            {repo.owner.login.slice(0, 2).toUpperCase()}
+          </AvatarFallback>
         </Avatar>
-        
+
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 flex-wrap">
             <a
@@ -47,13 +49,13 @@ function RepoListItem({ repo }: { repo: StarredRepo }) {
               </Badge>
             )}
           </div>
-          
+
           {repo.description && (
             <p className="text-sm text-muted-foreground mt-1 line-clamp-2">
               {repo.description}
             </p>
           )}
-          
+
           <div className="flex items-center gap-4 mt-2 text-sm text-muted-foreground flex-wrap">
             <span className="inline-flex items-center gap-1">
               <Star className="h-3.5 w-3.5" />
@@ -65,7 +67,10 @@ function RepoListItem({ repo }: { repo: StarredRepo }) {
             </span>
             <span className="inline-flex items-center gap-1">
               <Clock className="h-3.5 w-3.5" />
-              {formatDistanceToNow(new Date(repo.pushed_at), { addSuffix: true, locale: zhCN })}
+              {formatDistanceToNow(new Date(repo.pushed_at), {
+                addSuffix: true,
+                locale: zhCN,
+              })}
             </span>
           </div>
 

@@ -1,9 +1,22 @@
-import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend } from 'recharts';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Skeleton } from '@/components/ui/skeleton';
-import { PieChart as PieChartIcon } from 'lucide-react';
-import { LanguageData } from '@/hooks/useDashboardStats';
-import { useNavigate } from 'react-router-dom';
+import {
+  PieChart,
+  Pie,
+  Cell,
+  ResponsiveContainer,
+  Tooltip,
+  Legend,
+} from "recharts";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Skeleton } from "@/components/ui/skeleton";
+import { PieChart as PieChartIcon } from "lucide-react";
+import { LanguageData } from "@/hooks/useDashboardStats";
+import { useNavigate } from "react-router-dom";
 
 interface LanguagePieChartProps {
   data: LanguageData[];
@@ -14,7 +27,7 @@ export function LanguagePieChart({ data, isLoading }: LanguagePieChartProps) {
   const navigate = useNavigate();
 
   const handleClick = (entry: LanguageData) => {
-    if (entry.name === '其他') return;
+    if (entry.name === "其他") return;
     navigate(`/repos?language=${encodeURIComponent(entry.name)}`);
   };
 
@@ -66,7 +79,9 @@ export function LanguagePieChart({ data, isLoading }: LanguagePieChartProps) {
           <PieChartIcon className="h-5 w-5 text-primary" />
           语言分布
         </CardTitle>
-        <CardDescription>按编程语言统计的仓库数量（点击可筛选）</CardDescription>
+        <CardDescription>
+          按编程语言统计的仓库数量（点击可筛选）
+        </CardDescription>
       </CardHeader>
       <CardContent>
         <div className="h-64">
@@ -82,7 +97,7 @@ export function LanguagePieChart({ data, isLoading }: LanguagePieChartProps) {
                 dataKey="value"
                 nameKey="name"
                 onClick={handleClick}
-                style={{ cursor: 'pointer' }}
+                style={{ cursor: "pointer" }}
               >
                 {data.map((entry, index) => (
                   <Cell key={`cell-${index}`} fill={entry.color} />
@@ -114,7 +129,7 @@ export function LanguagePieChart({ data, isLoading }: LanguagePieChartProps) {
                 layout="vertical"
                 verticalAlign="middle"
                 align="right"
-                wrapperStyle={{ fontSize: '12px' }}
+                wrapperStyle={{ fontSize: "12px" }}
                 formatter={(value) => (
                   <span className="text-foreground">{value}</span>
                 )}

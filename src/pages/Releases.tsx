@@ -1,21 +1,31 @@
-import { useState, useEffect } from 'react';
-import { useAuth } from '@/contexts/AuthContext';
-import { LoginPage } from '@/components/auth/LoginPage';
-import { Header } from '@/components/layout/Header';
-import { Loader2, Plus, RefreshCw } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { useReleases } from '@/hooks/useReleases';
-import { useReleasesFetch } from '@/hooks/useReleasesFetch';
-import { useStars } from '@/hooks/useStars';
-import { ReleaseTimeline } from '@/components/releases/ReleaseTimeline';
-import { SubscriptionList } from '@/components/releases/SubscriptionList';
-import { AddSubscriptionDialog } from '@/components/releases/AddSubscriptionDialog';
+import { useState, useEffect } from "react";
+import { useAuth } from "@/contexts/AuthContext";
+import { LoginPage } from "@/components/auth/LoginPage";
+import { Header } from "@/components/layout/Header";
+import { Loader2, Plus, RefreshCw } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { useReleases } from "@/hooks/useReleases";
+import { useReleasesFetch } from "@/hooks/useReleasesFetch";
+import { useStars } from "@/hooks/useStars";
+import { ReleaseTimeline } from "@/components/releases/ReleaseTimeline";
+import { SubscriptionList } from "@/components/releases/SubscriptionList";
+import { AddSubscriptionDialog } from "@/components/releases/AddSubscriptionDialog";
 
 function ReleasesContent() {
   const [dialogOpen, setDialogOpen] = useState(false);
-  const { subscriptions, addSubscriptions, removeSubscription, updateLatestRelease, markAllChecked } = useReleases();
-  const { data: releases, isLoading: isLoadingReleases, refetch } = useReleasesFetch(subscriptions);
+  const {
+    subscriptions,
+    addSubscriptions,
+    removeSubscription,
+    updateLatestRelease,
+    markAllChecked,
+  } = useReleases();
+  const {
+    data: releases,
+    isLoading: isLoadingReleases,
+    refetch,
+  } = useReleasesFetch(subscriptions);
   const { data: starredRepos = [], isLoading: isLoadingStars } = useStars();
 
   // 进入页面即视为“已查看”，用于首页的待更新统计清零。
@@ -28,10 +38,13 @@ function ReleasesContent() {
   useEffect(() => {
     if (releases && releases.length > 0) {
       // Group releases by repo and get the latest for each
-      const latestByRepo = new Map<string, typeof releases[0]>();
-      releases.forEach(release => {
+      const latestByRepo = new Map<string, (typeof releases)[0]>();
+      releases.forEach((release) => {
         const existing = latestByRepo.get(release.repoFullName);
-        if (!existing || new Date(release.published_at) > new Date(existing.published_at)) {
+        if (
+          !existing ||
+          new Date(release.published_at) > new Date(existing.published_at)
+        ) {
           latestByRepo.set(release.repoFullName, release);
         }
       });
@@ -61,13 +74,15 @@ function ReleasesContent() {
               </p>
             </div>
             <div className="flex items-center gap-2">
-              <Button 
-                variant="outline" 
+              <Button
+                variant="outline"
                 size="icon"
                 onClick={() => refetch()}
                 disabled={isLoadingReleases || subscriptions.length === 0}
               >
-                <RefreshCw className={`h-4 w-4 ${isLoadingReleases ? 'animate-spin' : ''}`} />
+                <RefreshCw
+                  className={`h-4 w-4 ${isLoadingReleases ? "animate-spin" : ""}`}
+                />
               </Button>
               <Button onClick={() => setDialogOpen(true)}>
                 <Plus className="h-4 w-4 mr-2" />
@@ -83,16 +98,16 @@ function ReleasesContent() {
                 我的订阅 ({subscriptions.length})
               </TabsTrigger>
             </TabsList>
-            
+
             <TabsContent value="timeline" className="mt-6">
-              <ReleaseTimeline 
-                releases={releases || []} 
-                isLoading={isLoadingReleases} 
+              <ReleaseTimeline
+                releases={releases || []}
+                isLoading={isLoadingReleases}
               />
             </TabsContent>
-            
+
             <TabsContent value="subscriptions" className="mt-6">
-              <SubscriptionList 
+              <SubscriptionList
                 subscriptions={subscriptions}
                 onRemove={removeSubscription}
               />
@@ -105,7 +120,7 @@ function ReleasesContent() {
         open={dialogOpen}
         onOpenChange={setDialogOpen}
         starredRepos={starredRepos}
-        subscribedRepos={subscriptions.map(s => s.repoFullName)}
+        subscribedRepos={subscriptions.map((s) => s.repoFullName)}
         onAddSubscriptions={addSubscriptions}
       />
     </div>

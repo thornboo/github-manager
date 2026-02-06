@@ -1,25 +1,33 @@
-import { useState, useEffect, useRef } from 'react';
-import { ArrowLeft, Loader2 } from 'lucide-react';
-import { Link } from 'react-router-dom';
-import { Button } from '@/components/ui/button';
-import { SyncSettingsForm } from '@/components/settings/SyncSettingsForm';
-import { AISettingsForm } from '@/components/settings/AISettingsForm';
-import { SettingsNav } from '@/components/settings/SettingsNav';
-import { useSyncSettings } from '@/hooks/useSyncSettings';
-import { useAISettings } from '@/hooks/useAISettings';
-import { LocalDataProvider } from '@/contexts/LocalDataContext';
-import { useAuth } from '@/contexts/AuthContext';
-import { LoginPage } from '@/components/auth/LoginPage';
+import { useState, useEffect, useRef } from "react";
+import { ArrowLeft, Loader2 } from "lucide-react";
+import { Link } from "react-router-dom";
+import { Button } from "@/components/ui/button";
+import { SyncSettingsForm } from "@/components/settings/SyncSettingsForm";
+import { AISettingsForm } from "@/components/settings/AISettingsForm";
+import { SettingsNav } from "@/components/settings/SettingsNav";
+import { useSyncSettings } from "@/hooks/useSyncSettings";
+import { useAISettings } from "@/hooks/useAISettings";
+import { LocalDataProvider } from "@/contexts/LocalDataContext";
+import { useAuth } from "@/contexts/AuthContext";
+import { LoginPage } from "@/components/auth/LoginPage";
 
 function SettingsContent() {
-  const { settings: syncSettings, updateSettings: updateSyncSettings, getTimeSinceLastSync } = useSyncSettings();
-  const { settings: aiSettings, updateSettings: updateAISettings, updateProvider } = useAISettings();
-  const [activeSection, setActiveSection] = useState('sync');
+  const {
+    settings: syncSettings,
+    updateSettings: updateSyncSettings,
+    getTimeSinceLastSync,
+  } = useSyncSettings();
+  const {
+    settings: aiSettings,
+    updateSettings: updateAISettings,
+    updateProvider,
+  } = useAISettings();
+  const [activeSection, setActiveSection] = useState("sync");
   const mainRef = useRef<HTMLDivElement>(null);
 
   // 使用 IntersectionObserver 监听滚动
   useEffect(() => {
-    const sectionIds = ['sync', 'ai', 'ai-provider', 'ai-prompt', 'ai-options'];
+    const sectionIds = ["sync", "ai", "ai-provider", "ai-prompt", "ai-options"];
     const observers: IntersectionObserver[] = [];
 
     sectionIds.forEach((id) => {
@@ -34,10 +42,10 @@ function SettingsContent() {
             }
           });
         },
-        { 
-          rootMargin: '-20% 0px -70% 0px',
-          threshold: 0
-        }
+        {
+          rootMargin: "-20% 0px -70% 0px",
+          threshold: 0,
+        },
       );
 
       observer.observe(element);
@@ -45,14 +53,14 @@ function SettingsContent() {
     });
 
     return () => {
-      observers.forEach(observer => observer.disconnect());
+      observers.forEach((observer) => observer.disconnect());
     };
   }, [aiSettings.enabled]);
 
   const scrollToSection = (id: string) => {
     const element = document.getElementById(id);
     if (element) {
-      element.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      element.scrollIntoView({ behavior: "smooth", block: "start" });
     }
   };
 
@@ -76,13 +84,13 @@ function SettingsContent() {
           {/* 左侧导航 - 桌面端显示 */}
           <aside className="hidden md:block w-48 shrink-0">
             <nav className="sticky top-20">
-              <SettingsNav 
+              <SettingsNav
                 activeSection={activeSection}
                 onNavigate={scrollToSection}
               />
             </nav>
           </aside>
-          
+
           {/* 右侧内容 */}
           <main ref={mainRef} className="flex-1 space-y-6">
             <SyncSettingsForm

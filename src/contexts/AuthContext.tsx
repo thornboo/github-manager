@@ -1,5 +1,14 @@
-import { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
-import { GitHubUser, AuthState } from '@/types/github';
+import {
+  createContext,
+  useContext,
+  useState,
+  useEffect,
+  useCallback,
+  ReactNode,
+} from "react";
+import { GitHubUser, AuthState } from "@/types/github";
+import { STORAGE_KEYS } from "@/lib/constants";
+import { GitHubApiClient, GitHubApiError } from "@/lib/github-api";
 
 interface AuthContextType extends AuthState {
   login: (token: string) => Promise<void>;
@@ -7,8 +16,6 @@ interface AuthContextType extends AuthState {
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
-
-const STORAGE_KEY = 'github_stars_auth';
 
 interface StoredAuth {
   accessToken: string;
@@ -22,15 +29,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   // Load stored auth on mount
   useEffect(() => {
-    const stored = localStorage.getItem(STORAGE_KEY);
+    const stored = localStorage.getItem(STORAGE_KEYS.auth);
     if (stored) {
       try {
-        const { accessToken: token, user: storedUser } = JSON.parse(stored) as StoredAuth;
+        const { accessToken: token, user: storedUser } = JSON.parse(
+          stored,
+        ) as StoredAuth;
         setAccessToken(token);
         setUser(storedUser);
       } catch (e) {
-        console.error('Failed to parse stored auth:', e);
-        localStorage.removeItem(STORAGE_KEY);
+        console.error("Failed to parse stored auth:", e);
+        localStorage.removeItem(STORAGE_KEYS.auth);
       }
     }
     setIsLoading(false);
@@ -39,32 +48,30 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // Persist auth changes
   useEffect(() => {
     if (accessToken && user) {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify({ accessToken, user }));
+      localStorage.setItem(
+        STORAGE_KEYS.auth,
+        JSON.stringify({ accessToken, user }),
+      );
     }
   }, [accessToken, user]);
 
   const login = useCallback(async (token: string) => {
     setIsLoading(true);
-    
+
     try {
-      // Validate token by fetching user info
-      const response = await fetch('https://api.github.com/user', {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Accept': 'application/vnd.github.v3+json',
-          'User-Agent': 'GitHub-Stars-Manager',
-        },
-      });
+      const client = new GitHubApiClient(token);
 
-      if (!response.ok) {
-        if (response.status === 401) {
-          throw new Error('Token 无效或已过期');
-        }
-        throw new Error(`验证失败: ${response.status}`);
-      }
+      const userData = await client.rest<{
+        id: number;
+        login: string;
+        name: string | null;
+        avatar_url: string;
+        html_url: string;
+        public_repos: number;
+        followers: number;
+        following: number;
+      }>("/user");
 
-      const userData = await response.json();
-      
       const user: GitHubUser = {
         id: userData.id,
         login: userData.login,
@@ -78,6 +85,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       setAccessToken(token);
       setUser(user);
+    } catch (e) {
+      if (e instanceof GitHubApiError) {
+        if (e.status === 401) {
+          throw new Error("Token 无效或已过期");
+        }
+        throw new Error(`验证失败: ${e.status}`);
+      }
+      throw e;
     } finally {
       setIsLoading(false);
     }
@@ -86,7 +101,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const logout = useCallback(() => {
     setUser(null);
     setAccessToken(null);
-    localStorage.removeItem(STORAGE_KEY);
+    localStorage.removeItem(STORAGE_KEYS.auth);
   }, []);
 
   const value: AuthContextType = {
@@ -104,7 +119,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 export function useAuth() {
   const context = useContext(AuthContext);
   if (context === undefined) {
-    throw new Error('useAuth must be used within an AuthProvider');
+    throw new Error("useAuth must be used within an AuthProvider");
   }
   return context;
 }

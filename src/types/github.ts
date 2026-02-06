@@ -19,23 +19,14 @@ export interface GitHubRepo {
   };
   html_url: string;
   description: string | null;
-  fork: boolean;
   stargazers_count: number;
-  watchers_count: number;
   forks_count: number;
   language: string | null;
   topics: string[];
-  visibility: string;
   created_at: string;
   updated_at: string;
   pushed_at: string;
   homepage: string | null;
-  archived: boolean;
-  disabled: boolean;
-  license: {
-    key: string;
-    name: string;
-  } | null;
 }
 
 export interface StarredRepo extends GitHubRepo {
@@ -60,19 +51,6 @@ export interface StarList {
   itemsCount: number;
 }
 
-export interface AuthState {
-  user: GitHubUser | null;
-  accessToken: string | null;
-  isAuthenticated: boolean;
-  isLoading: boolean;
-}
-
-export type ViewMode = 'card' | 'list';
-
-export type SortOption = 'starred_at' | 'stars' | 'updated' | 'name';
-
-export type SortDirection = 'asc' | 'desc';
-
 // Release tracking types
 export interface GitHubRelease {
   id: number;
@@ -89,23 +67,6 @@ export interface GitHubRelease {
   };
 }
 
-export interface ReleaseSubscription {
-  repoFullName: string;
-  repoId?: number;
-  subscribedAt: string;
-  lastCheckedAt?: string;
-  latestRelease?: {
-    tagName: string;
-    name: string | null;
-    publishedAt: string;
-    htmlUrl: string;
-  };
-}
-
-export interface ReleaseWithRepo extends GitHubRelease {
-  repoFullName: string;
-}
-
 // Pull Request 类型
 export interface GitHubPullRequest {
   id: number;
@@ -113,7 +74,7 @@ export interface GitHubPullRequest {
   title: string;
   body: string | null;
   html_url: string;
-  state: 'open' | 'closed';
+  state: "open" | "closed";
   draft: boolean;
   created_at: string;
   updated_at: string;
@@ -140,7 +101,7 @@ export interface GitHubIssue {
   title: string;
   body: string | null;
   html_url: string;
-  state: 'open' | 'closed';
+  state: "open" | "closed";
   created_at: string;
   updated_at: string;
   closed_at: string | null;
@@ -155,3 +116,8 @@ export interface GitHubIssue {
   }>;
   comments: number;
 }
+
+// 兼容旧导出路径：逐步迁移到 types/local、types/ui、types/ai
+export type { ReleaseSubscription, ReleaseWithRepo } from "./local";
+export type { AuthState, ViewMode, SortOption, SortDirection } from "./ui";
+export type { AIProviderConfig, AnalysisDepth, RepoSuggestion } from "./ai";

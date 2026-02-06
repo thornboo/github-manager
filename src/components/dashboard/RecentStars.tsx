@@ -1,13 +1,22 @@
-import { ExternalLink, GitFork, Star } from 'lucide-react';
-import { formatDistanceToNow } from 'date-fns';
-import { zhCN } from 'date-fns/locale';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Skeleton } from '@/components/ui/skeleton';
-import { Badge } from '@/components/ui/badge';
-import { StarredRepo } from '@/types/github';
+import { ExternalLink, GitFork, Star } from "lucide-react";
+import { formatDistanceToNow } from "date-fns";
+import { zhCN } from "date-fns/locale";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Badge } from "@/components/ui/badge";
+import { StarredRepo } from "@/types/github";
 
 function formatCompactNumber(value: number): string {
-  return new Intl.NumberFormat('en', { notation: 'compact', maximumFractionDigits: 1 }).format(value);
+  return new Intl.NumberFormat("en", {
+    notation: "compact",
+    maximumFractionDigits: 1,
+  }).format(value);
 }
 
 interface RecentStarsProps {
@@ -26,11 +35,16 @@ export function RecentStars({ repos, isLoading }: RecentStarsProps) {
         {isLoading ? (
           <div className="flex gap-4 overflow-hidden">
             {Array.from({ length: 3 }).map((_, i) => (
-              <Skeleton key={i} className="h-40 w-[280px] shrink-0 rounded-lg" />
+              <Skeleton
+                key={i}
+                className="h-40 w-[280px] shrink-0 rounded-lg"
+              />
             ))}
           </div>
         ) : repos.length === 0 ? (
-          <div className="py-10 text-center text-sm text-muted-foreground">暂无数据</div>
+          <div className="py-10 text-center text-sm text-muted-foreground">
+            暂无数据
+          </div>
         ) : (
           <div className="flex gap-4 overflow-x-auto pb-2">
             {repos.map((repo) => (
@@ -50,7 +64,9 @@ export function RecentStars({ repos, isLoading }: RecentStarsProps) {
                   />
                   <div className="min-w-0 flex-1">
                     <div className="flex items-start justify-between gap-2">
-                      <div className="font-medium text-sm truncate">{repo.full_name}</div>
+                      <div className="font-medium text-sm truncate">
+                        {repo.full_name}
+                      </div>
                       <ExternalLink className="h-3 w-3 text-muted-foreground shrink-0 mt-0.5" />
                     </div>
                     {repo.description ? (
@@ -58,7 +74,9 @@ export function RecentStars({ repos, isLoading }: RecentStarsProps) {
                         {repo.description}
                       </p>
                     ) : (
-                      <p className="text-xs text-muted-foreground mt-1">暂无描述</p>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        暂无描述
+                      </p>
                     )}
                   </div>
                 </div>
@@ -73,15 +91,21 @@ export function RecentStars({ repos, isLoading }: RecentStarsProps) {
                     {formatCompactNumber(repo.forks_count)}
                   </span>
                   {repo.language && (
-                    <Badge variant="secondary" className="text-[10px] px-2 py-0.5">
+                    <Badge
+                      variant="secondary"
+                      className="text-[10px] px-2 py-0.5"
+                    >
                       {repo.language}
                     </Badge>
                   )}
                 </div>
 
                 <div className="mt-3 text-xs text-muted-foreground">
-                  Starred{' '}
-                  {formatDistanceToNow(new Date(repo.starred_at), { addSuffix: true, locale: zhCN })}
+                  Starred{" "}
+                  {formatDistanceToNow(new Date(repo.starred_at), {
+                    addSuffix: true,
+                    locale: zhCN,
+                  })}
                 </div>
               </a>
             ))}
@@ -91,4 +115,3 @@ export function RecentStars({ repos, isLoading }: RecentStarsProps) {
     </Card>
   );
 }
-

@@ -1,68 +1,81 @@
-import { useState, useMemo, useEffect } from 'react';
-import { Search, GitPullRequest, GitMerge, XCircle } from 'lucide-react';
-import { Header } from '@/components/layout/Header';
-import { useSyncContext } from '@/contexts/SyncContext';
-import { PRCard } from '@/components/pr/PRCard';
-import { Input } from '@/components/ui/input';
-import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Skeleton } from '@/components/ui/skeleton';
-import { useSearchParams } from 'react-router-dom';
+import { useState, useMemo, useEffect } from "react";
+import { Search, GitPullRequest, GitMerge, XCircle } from "lucide-react";
+import { Header } from "@/components/layout/Header";
+import { useSyncContext } from "@/contexts/SyncContext";
+import { PRCard } from "@/components/pr/PRCard";
+import { Input } from "@/components/ui/input";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Skeleton } from "@/components/ui/skeleton";
+import { useSearchParams } from "react-router-dom";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from '@/components/ui/select';
-import { PRSource } from '@/hooks/usePullRequests';
+} from "@/components/ui/select";
+import { PRSource } from "@/hooks/usePullRequests";
 
-type PRFilter = 'all' | 'open' | 'closed' | 'merged';
-type PRSourceFilter = PRSource | 'all';
+type PRFilter = "all" | "open" | "closed" | "merged";
+type PRSourceFilter = PRSource | "all";
 
 export default function PullRequests() {
   const { pullRequests, isLoading } = useSyncContext();
-  const [search, setSearch] = useState('');
-  const [filter, setFilter] = useState<PRFilter>('all');
-  const [source, setSource] = useState<PRSourceFilter>('created');
+  const [search, setSearch] = useState("");
+  const [filter, setFilter] = useState<PRFilter>("all");
+  const [source, setSource] = useState<PRSourceFilter>("created");
   const [searchParams] = useSearchParams();
 
   // URL 参数支持：/pulls?state=open&source=all
   useEffect(() => {
-    const stateParam = searchParams.get('state');
-    if (stateParam === 'all' || stateParam === 'open' || stateParam === 'closed' || stateParam === 'merged') {
+    const stateParam = searchParams.get("state");
+    if (
+      stateParam === "all" ||
+      stateParam === "open" ||
+      stateParam === "closed" ||
+      stateParam === "merged"
+    ) {
       setFilter(stateParam);
     }
 
-    const sourceParam = searchParams.get('source');
-    if (sourceParam === 'created' || sourceParam === 'involved' || sourceParam === 'all') {
+    const sourceParam = searchParams.get("source");
+    if (
+      sourceParam === "created" ||
+      sourceParam === "involved" ||
+      sourceParam === "all"
+    ) {
       setSource(sourceParam);
     }
   }, [searchParams]);
 
   const currentPRs = useMemo(() => {
     if (!pullRequests) return [];
-    if (source === 'all') return [...pullRequests.created, ...pullRequests.involved];
-    return source === 'created' ? pullRequests.created : pullRequests.involved;
+    if (source === "all")
+      return [...pullRequests.created, ...pullRequests.involved];
+    return source === "created" ? pullRequests.created : pullRequests.involved;
   }, [pullRequests, source]);
 
   const filteredPRs = useMemo(() => {
     let filtered = currentPRs;
 
     // 过滤状态
-    if (filter === 'open') {
-      filtered = filtered.filter(pr => pr.state === 'open');
-    } else if (filter === 'closed') {
-      filtered = filtered.filter(pr => pr.state === 'closed' && !pr.pull_request?.merged_at);
-    } else if (filter === 'merged') {
-      filtered = filtered.filter(pr => pr.pull_request?.merged_at);
+    if (filter === "open") {
+      filtered = filtered.filter((pr) => pr.state === "open");
+    } else if (filter === "closed") {
+      filtered = filtered.filter(
+        (pr) => pr.state === "closed" && !pr.pull_request?.merged_at,
+      );
+    } else if (filter === "merged") {
+      filtered = filtered.filter((pr) => pr.pull_request?.merged_at);
     }
 
     // 搜索
     if (search.trim()) {
       const searchLower = search.toLowerCase();
-      filtered = filtered.filter(pr =>
-        pr.title.toLowerCase().includes(searchLower) ||
-        pr.repository_url.toLowerCase().includes(searchLower)
+      filtered = filtered.filter(
+        (pr) =>
+          pr.title.toLowerCase().includes(searchLower) ||
+          pr.repository_url.toLowerCase().includes(searchLower),
       );
     }
 
@@ -72,9 +85,11 @@ export default function PullRequests() {
   const counts = useMemo(() => {
     return {
       all: currentPRs.length,
-      open: currentPRs.filter(pr => pr.state === 'open').length,
-      closed: currentPRs.filter(pr => pr.state === 'closed' && !pr.pull_request?.merged_at).length,
-      merged: currentPRs.filter(pr => pr.pull_request?.merged_at).length,
+      open: currentPRs.filter((pr) => pr.state === "open").length,
+      closed: currentPRs.filter(
+        (pr) => pr.state === "closed" && !pr.pull_request?.merged_at,
+      ).length,
+      merged: currentPRs.filter((pr) => pr.pull_request?.merged_at).length,
     };
   }, [currentPRs]);
 
@@ -93,7 +108,10 @@ export default function PullRequests() {
                 className="pl-9"
               />
             </div>
-            <Select value={source} onValueChange={(v) => setSource(v as PRSourceFilter)}>
+            <Select
+              value={source}
+              onValueChange={(v) => setSource(v as PRSourceFilter)}
+            >
               <SelectTrigger className="w-[140px]">
                 <SelectValue />
               </SelectTrigger>
@@ -103,22 +121,37 @@ export default function PullRequests() {
                 <SelectItem value="involved">我参与的</SelectItem>
               </SelectContent>
             </Select>
-            <Tabs value={filter} onValueChange={(v) => setFilter(v as PRFilter)}>
+            <Tabs
+              value={filter}
+              onValueChange={(v) => setFilter(v as PRFilter)}
+            >
               <TabsList>
                 <TabsTrigger value="all" className="gap-1">
-                  全部 <span className="text-xs text-muted-foreground">({counts.all})</span>
+                  全部{" "}
+                  <span className="text-xs text-muted-foreground">
+                    ({counts.all})
+                  </span>
                 </TabsTrigger>
                 <TabsTrigger value="open" className="gap-1">
                   <GitPullRequest className="h-3 w-3" />
-                  Open <span className="text-xs text-muted-foreground">({counts.open})</span>
+                  Open{" "}
+                  <span className="text-xs text-muted-foreground">
+                    ({counts.open})
+                  </span>
                 </TabsTrigger>
                 <TabsTrigger value="merged" className="gap-1">
                   <GitMerge className="h-3 w-3" />
-                  Merged <span className="text-xs text-muted-foreground">({counts.merged})</span>
+                  Merged{" "}
+                  <span className="text-xs text-muted-foreground">
+                    ({counts.merged})
+                  </span>
                 </TabsTrigger>
                 <TabsTrigger value="closed" className="gap-1">
                   <XCircle className="h-3 w-3" />
-                  Closed <span className="text-xs text-muted-foreground">({counts.closed})</span>
+                  Closed{" "}
+                  <span className="text-xs text-muted-foreground">
+                    ({counts.closed})
+                  </span>
                 </TabsTrigger>
               </TabsList>
             </Tabs>
@@ -137,12 +170,12 @@ export default function PullRequests() {
             <h3 className="text-lg font-medium">暂无 Pull Requests</h3>
             <p className="text-sm text-muted-foreground">
               {search
-                ? '没有找到匹配的 PR'
-                : source === 'created'
-                  ? '你还没有提交过 PR'
-                  : source === 'involved'
-                    ? '你还没有参与过其他人的 PR'
-                    : '你还没有任何 PR 记录'}
+                ? "没有找到匹配的 PR"
+                : source === "created"
+                  ? "你还没有提交过 PR"
+                  : source === "involved"
+                    ? "你还没有参与过其他人的 PR"
+                    : "你还没有任何 PR 记录"}
             </p>
           </div>
         ) : (
