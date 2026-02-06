@@ -1,10 +1,9 @@
-import { useState, useRef } from "react";
+import { useState } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { LoginPage } from "@/components/auth/LoginPage";
 import { Header } from "@/components/layout/Header";
 import { AppSidebar } from "@/components/layout/AppSidebar";
 import { StarsDashboard } from "@/components/stars/StarsDashboard";
-import { ScrollToTop } from "@/components/layout/ScrollToTop";
 import { LocalDataProvider } from "@/contexts/LocalDataContext";
 import { Loader2, Menu } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -15,7 +14,6 @@ function AuthenticatedApp() {
   const [selectedTag, setSelectedTag] = useState<string | null>(null);
   const [selectedTopic, setSelectedTopic] = useState<string | null>(null);
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
-  const mainRef = useRef<HTMLElement>(null);
 
   const sidebar = (
     <AppSidebar
@@ -62,7 +60,7 @@ function AuthenticatedApp() {
           <div className="hidden md:flex h-full">{sidebar}</div>
 
           {/* Main content */}
-          <main ref={mainRef} className="flex-1 p-6 overflow-y-auto">
+          <main className="flex-1 p-6 overflow-hidden min-h-0">
             <StarsDashboard
               selectedList={selectedList}
               selectedTag={selectedTag}
@@ -70,7 +68,6 @@ function AuthenticatedApp() {
             />
           </main>
         </div>
-        <ScrollToTop scrollContainerRef={mainRef} />
       </div>
     </LocalDataProvider>
   );

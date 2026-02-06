@@ -13,3 +13,15 @@ Object.defineProperty(window, "matchMedia", {
     dispatchEvent: () => {},
   }),
 });
+
+// jsdom lacks ResizeObserver. Some UI libs (Radix, virtualizer) rely on it.
+class ResizeObserverMock {
+  observe() {}
+  unobserve() {}
+  disconnect() {}
+}
+
+Object.defineProperty(window, "ResizeObserver", {
+  writable: true,
+  value: ResizeObserverMock,
+});

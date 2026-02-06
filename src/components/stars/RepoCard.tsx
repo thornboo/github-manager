@@ -1,3 +1,4 @@
+import { memo } from "react";
 import { StarredRepo } from "@/types/github";
 import {
   Card,
@@ -30,32 +31,38 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 
-interface RepoCardProps {
+interface RepoCardProps extends React.HTMLAttributes<HTMLDivElement> {
   repo: StarredRepo;
   isSelected?: boolean;
-  onToggleSelect?: () => void;
-  onAnalyze?: () => void;
+  onToggleSelect?: (repoId: number) => void;
+  onAnalyze?: (repo: StarredRepo) => void;
 }
 
-export function RepoCard({
+export const RepoCard = memo(function RepoCard({
   repo,
   isSelected,
   onToggleSelect,
   onAnalyze,
+  className,
+  style,
+  ...cardProps
 }: RepoCardProps) {
   const colors = getLanguageColors(repo.language);
 
   return (
     <Card
+      {...cardProps}
       className={cn(
-        "flex flex-col gradient-glass-card group relative transition-all duration-200",
+        "flex flex-col gradient-glass-card group relative transition-all duration-200 outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background",
         isSelected &&
           "ring-2 ring-primary ring-offset-2 ring-offset-background bg-primary/5",
+        className,
       )}
       style={
         {
           "--card-color-left": colors.left,
           "--card-color-right": colors.right,
+          ...style,
         } as React.CSSProperties
       }
     >
@@ -65,7 +72,7 @@ export function RepoCard({
           className="absolute top-3 left-3 z-10 cursor-pointer"
           onClick={(e) => {
             e.stopPropagation();
-            onToggleSelect();
+            onToggleSelect(repo.id);
           }}
         >
           <div
@@ -92,7 +99,7 @@ export function RepoCard({
                 className="h-7 w-7 bg-background/80 backdrop-blur"
                 onClick={(e) => {
                   e.stopPropagation();
-                  onAnalyze();
+                  onAnalyze(repo);
                 }}
               >
                 <Sparkles className="h-3.5 w-3.5" />
@@ -181,4 +188,4 @@ export function RepoCard({
       </CardContent>
     </Card>
   );
-}
+});

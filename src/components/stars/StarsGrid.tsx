@@ -54,8 +54,8 @@ export function StarsGrid({
               key={repo.id}
               repo={repo}
               isSelected={selectedRepos.has(repo.id)}
-              onToggleSelect={() => onToggleSelect(repo.id)}
-              onAnalyze={() => onAnalyze(repo)}
+              onToggleSelect={onToggleSelect}
+              onAnalyze={onAnalyze}
             />
           ))}
         </div>
