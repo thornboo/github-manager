@@ -1,4 +1,4 @@
-import { useCallback } from "react";
+import { useCallback, useLayoutEffect, useState } from "react";
 import type { StarredRepo } from "@/types/github";
 import { RepoCard } from "@/components/stars/RepoCard";
 import { cn } from "@/lib/utils";
@@ -27,6 +27,22 @@ export function VirtualStarsGrid({
   className,
 }: VirtualStarsGridProps) {
   const safeColumnCount = Math.max(1, columnCount);
+  const [containerWidth, setContainerWidth] = useState(() => {
+    return scrollElementRef.current?.clientWidth ?? 0;
+  });
+
+  // 监听滚动容器宽度：避免在首次渲染时 ref 尚未就绪导致宽度为 0，从而丢失“卡片流/瀑布流”布局。
+  useLayoutEffect(() => {
+    const container = scrollElementRef.current;
+    if (!container) return;
+
+    const update = () => setContainerWidth(container.clientWidth);
+    update();
+
+    const observer = new ResizeObserver(() => update());
+    observer.observe(container);
+    return () => observer.disconnect();
+  }, [scrollElementRef]);
 
   // 使用 lanes 实现“卡片流/瀑布流”虚拟化：每一列作为一个 lane，纵向按实际高度堆叠。
   // 这能保留原 StarsGrid 的紧凑布局（不会出现等高行导致的空洞）。
@@ -44,7 +60,6 @@ export function VirtualStarsGrid({
   const totalSize = virtualizer.getTotalSize();
   const measureElement = virtualizer.measureElement;
 
-  const containerWidth = scrollElementRef.current?.clientWidth ?? 0;
   const laneWidth =
     safeColumnCount === 1
       ? containerWidth

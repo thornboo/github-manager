@@ -3,11 +3,15 @@ import { useAuth } from "@/contexts/AuthContext";
 import { GitHubPullRequest } from "@/types/github";
 import { API_DEFAULTS, STORAGE_KEYS } from "@/lib/constants";
 import { GitHubApiClient } from "@/lib/github-api";
+import { fetchAllPRsGraphQL } from "@/hooks/api/usePullRequestsGraphQL";
 
 // 兼容旧导出路径：逐步迁移到 lib/github-utils
 export { getRepoNameFromUrl } from "@/lib/github-utils";
 
 export type PRSource = "created" | "involved";
+
+// 默认启用 GraphQL；如需强制回退 REST，可设置 VITE_USE_GRAPHQL=false。
+const USE_GRAPHQL = import.meta.env.VITE_USE_GRAPHQL !== "false";
 
 export function getCachedPRs():
   | { created: GitHubPullRequest[]; involved: GitHubPullRequest[] }
@@ -97,8 +101,26 @@ export function usePullRequests() {
   const cachedData = getCachedPRs();
 
   return useQuery({
-    queryKey: ["pullRequests", accessToken, user?.login],
-    queryFn: () => fetchAllPRs(accessToken!, user!.login),
+    queryKey: [
+      "pullRequests",
+      USE_GRAPHQL ? "graphql" : "rest",
+      accessToken,
+      user?.login,
+    ],
+    queryFn: async () => {
+      if (!accessToken || !user?.login) throw new Error("Missing user info");
+
+      if (!USE_GRAPHQL) {
+        return fetchAllPRs(accessToken, user.login);
+      }
+
+      try {
+        return await fetchAllPRsGraphQL(accessToken, user.login);
+      } catch (e) {
+        console.warn("GraphQL PRs fetch failed, falling back to REST:", e);
+        return fetchAllPRs(accessToken, user.login);
+      }
+    },
     enabled: isAuthenticated && !!accessToken && !!user?.login,
     initialData: cachedData,
     staleTime: Infinity,

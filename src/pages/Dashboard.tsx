@@ -11,38 +11,23 @@ import { RecentStars } from "@/components/dashboard/RecentStars";
 import { LanguagePieChart } from "@/components/dashboard/LanguagePieChart";
 import { StarTrendChart } from "@/components/dashboard/StarTrendChart";
 import { useReleases } from "@/hooks/useReleases";
-import { useReleasesFetch } from "@/hooks/useReleasesFetch";
+import { useBatchReleases } from "@/hooks/useBatchReleases";
 import { useEffect } from "react";
 
 function DashboardContent() {
   const { stars, pullRequests, issues, isLoading } = useSyncContext();
   const { subscriptions, updateLatestRelease } = useReleases();
-  const { data: releases } = useReleasesFetch(subscriptions, { perRepo: 3 });
+  const { data: latestReleases } = useBatchReleases(subscriptions);
 
   // 在首页轻量同步订阅仓库的最新 Release 信息，用于“待更新 Release”统计。
   useEffect(() => {
-    if (!releases || releases.length === 0) return;
+    if (!latestReleases || latestReleases.size === 0) return;
 
-    const latestByRepo = new Map<string, (typeof releases)[number]>();
-    releases.forEach((release) => {
-      const existing = latestByRepo.get(release.repoFullName);
-      if (
-        !existing ||
-        new Date(release.published_at) > new Date(existing.published_at)
-      ) {
-        latestByRepo.set(release.repoFullName, release);
-      }
+    latestReleases.forEach((release, repoFullName) => {
+      if (!release) return;
+      updateLatestRelease(repoFullName, release);
     });
-
-    latestByRepo.forEach((release, repoFullName) => {
-      updateLatestRelease(repoFullName, {
-        tagName: release.tag_name,
-        name: release.name,
-        publishedAt: release.published_at,
-        htmlUrl: release.html_url,
-      });
-    });
-  }, [releases, updateLatestRelease]);
+  }, [latestReleases, updateLatestRelease]);
 
   const stats = useDashboardStats(stars, pullRequests, issues, subscriptions);
 

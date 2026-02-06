@@ -174,7 +174,7 @@ export function DataBackupSection() {
                       </p>
                       <div className="mt-3 flex items-center gap-3">
                         <span className="text-sm text-muted-foreground">
-                          为确保数据完全生效，请刷新页面。
+                          为确保数据完全生效，请点击“刷新页面”按钮。
                         </span>
                         <Button
                           size="sm"
@@ -208,7 +208,7 @@ export function DataBackupSection() {
             <AlertDialogTitle>确认覆盖本地数据？</AlertDialogTitle>
             <AlertDialogDescription>
               替换模式会覆盖现有的标签、备注与 Release 订阅数据。AI 配置中的 API
-              Key 不会被覆盖。建议导入后刷新页面以确保全部状态生效。
+              Key 不会被覆盖。建议导入后点击“刷新页面”按钮以确保全部状态生效。
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

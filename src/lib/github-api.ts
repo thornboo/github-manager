@@ -112,4 +112,73 @@ export class GitHubApiClient {
 
     return payload.data;
   }
+
+  /**
+   * Execute a GraphQL query and collect all pages using cursor pagination.
+   * This keeps the pagination logic close to the API client to avoid duplicating loops.
+   */
+  async graphqlPaginated<TData, TNode>(
+    query: string,
+    variables: Record<string, unknown>,
+    getPageInfo: (data: TData) => {
+      hasNextPage: boolean;
+      endCursor: string | null;
+    },
+    getNodes: (data: TData) => TNode[],
+  ): Promise<TNode[]> {
+    const allNodes: TNode[] = [];
+    let cursor: string | null = null;
+    let hasNextPage = true;
+
+    while (hasNextPage) {
+      const data = await this.graphql<TData>(query, { ...variables, cursor });
+      allNodes.push(...getNodes(data));
+
+      const pageInfo = getPageInfo(data);
+      hasNextPage = pageInfo.hasNextPage;
+      cursor = pageInfo.endCursor;
+    }
+
+    return allNodes;
+  }
+
+  /**
+   * Combine multiple field selections into a single GraphQL request.
+   *
+   * NOTE: This helper inlines provided variables into the selection string.
+   * It is intentionally limited to scalars and arrays of scalars to keep it predictable.
+   */
+  async graphqlBatch<T>(
+    selections: Array<{
+      alias: string;
+      selection: string;
+      variables?: Record<string, unknown>;
+    }>,
+  ): Promise<Record<string, T>> {
+    const toLiteral = (value: unknown): string => {
+      if (value === null) return "null";
+      if (typeof value === "string") return JSON.stringify(value);
+      if (typeof value === "number" || typeof value === "boolean")
+        return String(value);
+      if (Array.isArray(value)) return `[${value.map(toLiteral).join(",")}]`;
+      throw new Error("graphqlBatch only supports scalar variables and arrays");
+    };
+
+    const combinedSelection = selections
+      .map(({ alias, selection, variables }) => {
+        let next = selection;
+        if (variables) {
+          for (const [key, value] of Object.entries(variables)) {
+            const pattern = new RegExp(`\\$${key}\\b`, "g");
+            next = next.replace(pattern, toLiteral(value));
+          }
+        }
+        return `${alias}: ${next}`;
+      })
+      .join("\n");
+
+    return this.graphql<Record<string, T>>(
+      `query BatchQuery {\n${combinedSelection}\n}`,
+    );
+  }
 }

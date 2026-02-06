@@ -3,11 +3,15 @@ import { useAuth } from "@/contexts/AuthContext";
 import { GitHubIssue } from "@/types/github";
 import { API_DEFAULTS, STORAGE_KEYS } from "@/lib/constants";
 import { GitHubApiClient } from "@/lib/github-api";
+import { fetchAllIssuesGraphQL } from "@/hooks/api/useIssuesGraphQL";
 
 // 兼容旧导出路径：逐步迁移到 lib/github-utils
 export { getRepoNameFromUrl } from "@/lib/github-utils";
 
 export type IssueSource = "created" | "involved";
+
+// 默认启用 GraphQL；如需强制回退 REST，可设置 VITE_USE_GRAPHQL=false。
+const USE_GRAPHQL = import.meta.env.VITE_USE_GRAPHQL !== "false";
 
 export function getCachedIssues():
   | { created: GitHubIssue[]; involved: GitHubIssue[] }
@@ -100,8 +104,26 @@ export function useIssues() {
   const cachedData = getCachedIssues();
 
   return useQuery({
-    queryKey: ["issues", accessToken, user?.login],
-    queryFn: () => fetchAllIssues(accessToken!, user!.login),
+    queryKey: [
+      "issues",
+      USE_GRAPHQL ? "graphql" : "rest",
+      accessToken,
+      user?.login,
+    ],
+    queryFn: async () => {
+      if (!accessToken || !user?.login) throw new Error("Missing user info");
+
+      if (!USE_GRAPHQL) {
+        return fetchAllIssues(accessToken, user.login);
+      }
+
+      try {
+        return await fetchAllIssuesGraphQL(accessToken, user.login);
+      } catch (e) {
+        console.warn("GraphQL issues fetch failed, falling back to REST:", e);
+        return fetchAllIssues(accessToken, user.login);
+      }
+    },
     enabled: isAuthenticated && !!accessToken && !!user?.login,
     initialData: cachedData,
     staleTime: Infinity,

@@ -9,6 +9,7 @@ import {
 import { GitHubUser, AuthState } from "@/types/github";
 import { STORAGE_KEYS } from "@/lib/constants";
 import { GitHubApiClient, GitHubApiError } from "@/lib/github-api";
+import { VIEWER_QUERY } from "@/lib/graphql/queries";
 
 interface AuthContextType extends AuthState {
   login: (token: string) => Promise<void>;
@@ -21,6 +22,9 @@ interface StoredAuth {
   accessToken: string;
   user: GitHubUser;
 }
+
+// 默认启用 GraphQL；如需强制回退 REST，可设置 VITE_USE_GRAPHQL=false。
+const USE_GRAPHQL = import.meta.env.VITE_USE_GRAPHQL !== "false";
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<GitHubUser | null>(null);
@@ -61,27 +65,70 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       const client = new GitHubApiClient(token);
 
-      const userData = await client.rest<{
-        id: number;
-        login: string;
-        name: string | null;
-        avatar_url: string;
-        html_url: string;
-        public_repos: number;
-        followers: number;
-        following: number;
-      }>("/user");
+      const fetchUserByRest = async (): Promise<GitHubUser> => {
+        const userData = await client.rest<{
+          id: number;
+          login: string;
+          name: string | null;
+          avatar_url: string;
+          html_url: string;
+          public_repos: number;
+          followers: number;
+          following: number;
+        }>("/user");
 
-      const user: GitHubUser = {
-        id: userData.id,
-        login: userData.login,
-        name: userData.name,
-        avatar_url: userData.avatar_url,
-        html_url: userData.html_url,
-        public_repos: userData.public_repos,
-        followers: userData.followers,
-        following: userData.following,
+        return {
+          id: userData.id,
+          login: userData.login,
+          name: userData.name,
+          avatar_url: userData.avatar_url,
+          html_url: userData.html_url,
+          public_repos: userData.public_repos,
+          followers: userData.followers,
+          following: userData.following,
+        };
       };
+
+      const fetchUserByGraphQL = async (): Promise<GitHubUser> => {
+        const data = await client.graphql<{
+          viewer: {
+            databaseId: number | null;
+            login: string;
+            name: string | null;
+            avatarUrl: string;
+            url: string;
+            repositories: { totalCount: number };
+            followers: { totalCount: number };
+            following: { totalCount: number };
+          };
+        }>(VIEWER_QUERY);
+
+        const viewer = data.viewer;
+        if (!viewer?.databaseId) {
+          throw new Error("GraphQL viewer response missing databaseId");
+        }
+
+        return {
+          id: viewer.databaseId,
+          login: viewer.login,
+          name: viewer.name,
+          avatar_url: viewer.avatarUrl,
+          html_url: viewer.url,
+          public_repos: viewer.repositories.totalCount,
+          followers: viewer.followers.totalCount,
+          following: viewer.following.totalCount,
+        };
+      };
+
+      const user: GitHubUser = !USE_GRAPHQL
+        ? await fetchUserByRest()
+        : await fetchUserByGraphQL().catch((e) => {
+            console.warn(
+              "GraphQL viewer fetch failed, falling back to REST:",
+              e,
+            );
+            return fetchUserByRest();
+          });
 
       setAccessToken(token);
       setUser(user);

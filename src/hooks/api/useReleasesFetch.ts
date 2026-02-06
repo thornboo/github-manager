@@ -7,6 +7,10 @@ import {
   ReleaseSubscription,
 } from "@/types/github";
 import { GitHubApiClient, GitHubApiError } from "@/lib/github-api";
+import { parseRepoFullName } from "@/lib/github-utils";
+
+// 默认启用 GraphQL；如需强制回退 REST，可设置 VITE_USE_GRAPHQL=false。
+const USE_GRAPHQL = import.meta.env.VITE_USE_GRAPHQL !== "false";
 
 async function fetchRepoReleases(
   client: GitHubApiClient,
@@ -69,6 +73,152 @@ async function fetchAllSubscribedReleases(
   return allReleases;
 }
 
+interface GraphQLReleaseNode {
+  databaseId: number | null;
+  tagName: string;
+  name: string | null;
+  description: string | null;
+  publishedAt: string | null;
+  createdAt: string;
+  url: string;
+  isPrerelease: boolean;
+  isDraft: boolean;
+  author: { login: string; avatarUrl: string } | null;
+}
+
+interface GraphQLRepoReleasesResult {
+  nameWithOwner: string;
+  releases?: { nodes?: Array<GraphQLReleaseNode | null> | null } | null;
+}
+
+type BatchRepoReleasesResult = Record<string, GraphQLRepoReleasesResult | null>;
+
+interface GraphQLVerifyRepo {
+  databaseId: number | null;
+  name: string;
+  nameWithOwner: string;
+  description: string | null;
+  url: string;
+  homepageUrl: string | null;
+  primaryLanguage: { name: string } | null;
+  stargazerCount: number;
+  forkCount: number;
+  repositoryTopics: { nodes: Array<{ topic: { name: string } } | null> };
+  owner: { login: string; avatarUrl: string };
+  createdAt: string;
+  updatedAt: string;
+  pushedAt: string;
+}
+
+function hashToInt(input: string): number {
+  // Stable 32-bit hash (djb2 variant) for cases where databaseId is unavailable.
+  let hash = 5381;
+  for (let i = 0; i < input.length; i += 1) {
+    hash = (hash * 33) ^ input.charCodeAt(i);
+  }
+  return hash >>> 0;
+}
+
+function buildBatchRepoReleasesQuery(repos: string[], perRepo: number): string {
+  const repoQueries = repos
+    .map((repoFullName, index) => {
+      const { owner, repo } = parseRepoFullName(repoFullName);
+      if (!owner || !repo) return null;
+
+      const ownerLiteral = JSON.stringify(owner);
+      const repoLiteral = JSON.stringify(repo);
+      const perRepoLiteral = Number.isFinite(perRepo)
+        ? Math.max(1, perRepo)
+        : 1;
+
+      return `
+        repo${index}: repository(owner: ${ownerLiteral}, name: ${repoLiteral}) {
+          nameWithOwner
+          releases(first: ${perRepoLiteral}, orderBy: {field: CREATED_AT, direction: DESC}) {
+            nodes {
+              databaseId
+              tagName
+              name
+              description
+              publishedAt
+              createdAt
+              url
+              isPrerelease
+              isDraft
+              author {
+                login
+                avatarUrl
+              }
+            }
+          }
+        }
+      `;
+    })
+    .filter(Boolean)
+    .join("\n");
+
+  return `query BatchRepoReleases {\n${repoQueries}\n}`;
+}
+
+async function fetchAllSubscribedReleasesGraphQL(
+  client: GitHubApiClient,
+  subscriptions: ReleaseSubscription[],
+  perRepo: number,
+): Promise<ReleaseWithRepo[]> {
+  if (subscriptions.length === 0) return [];
+
+  const repos = subscriptions.map((s) => s.repoFullName);
+
+  // GitHub GraphQL 有查询复杂度限制：按批次请求更稳妥。
+  const BATCH_SIZE = 10;
+  const allReleases: ReleaseWithRepo[] = [];
+
+  for (let i = 0; i < repos.length; i += BATCH_SIZE) {
+    const batch = repos.slice(i, i + BATCH_SIZE);
+    const query = buildBatchRepoReleasesQuery(batch, perRepo);
+    if (!query.trim()) continue;
+
+    const data = await client.graphql<BatchRepoReleasesResult>(query);
+
+    for (const repo of Object.values(data)) {
+      if (!repo?.releases?.nodes?.length) continue;
+      const repoFullName = repo.nameWithOwner;
+
+      for (const release of repo.releases.nodes) {
+        if (!release) continue;
+        if (release.isDraft) continue;
+
+        const publishedAt = release.publishedAt || release.createdAt;
+
+        allReleases.push({
+          id:
+            release.databaseId ??
+            hashToInt(`${repoFullName}:${release.tagName}:${publishedAt}`),
+          tag_name: release.tagName,
+          name: release.name,
+          body: release.description,
+          html_url: release.url,
+          published_at: publishedAt,
+          prerelease: release.isPrerelease,
+          draft: release.isDraft,
+          author: {
+            login: release.author?.login ?? "unknown",
+            avatar_url: release.author?.avatarUrl ?? "",
+          },
+          repoFullName,
+        });
+      }
+    }
+  }
+
+  allReleases.sort(
+    (a, b) =>
+      new Date(b.published_at).getTime() - new Date(a.published_at).getTime(),
+  );
+
+  return allReleases;
+}
+
 export function useReleasesFetch(
   subscriptions: ReleaseSubscription[],
   options?: { perRepo?: number },
@@ -82,12 +232,25 @@ export function useReleasesFetch(
       perRepo,
       subscriptions.map((s) => s.repoFullName).join(","),
     ],
-    queryFn: () =>
-      fetchAllSubscribedReleases(
-        new GitHubApiClient(accessToken!),
-        subscriptions,
-        perRepo,
-      ),
+    queryFn: async () => {
+      if (!accessToken) throw new Error("Missing access token");
+      const client = new GitHubApiClient(accessToken);
+
+      if (!USE_GRAPHQL) {
+        return fetchAllSubscribedReleases(client, subscriptions, perRepo);
+      }
+
+      try {
+        return await fetchAllSubscribedReleasesGraphQL(
+          client,
+          subscriptions,
+          perRepo,
+        );
+      } catch (e) {
+        console.warn("GraphQL releases fetch failed, falling back to REST:", e);
+        return fetchAllSubscribedReleases(client, subscriptions, perRepo);
+      }
+    },
     enabled: isAuthenticated && !!accessToken && subscriptions.length > 0,
     staleTime: 5 * 60 * 1000, // 5 minutes
     refetchOnWindowFocus: false,
@@ -105,15 +268,97 @@ export function useVerifyRepo(repoFullName: string | null) {
       const client = new GitHubApiClient(accessToken!);
 
       try {
-        return await client.rest<GitHubRepo>(`/repos/${repoFullName}`);
+        if (!USE_GRAPHQL) {
+          return await client.rest<GitHubRepo>(`/repos/${repoFullName}`);
+        }
+
+        const { owner, repo } = parseRepoFullName(repoFullName);
+        if (!owner || !repo) throw new Error("仓库格式错误，应为 owner/repo");
+
+        const query = `
+          query VerifyRepo($owner: String!, $name: String!) {
+            repository(owner: $owner, name: $name) {
+              databaseId
+              name
+              nameWithOwner
+              description
+              url
+              homepageUrl
+              primaryLanguage {
+                name
+              }
+              stargazerCount
+              forkCount
+              repositoryTopics(first: 20) {
+                nodes {
+                  topic {
+                    name
+                  }
+                }
+              }
+              owner {
+                login
+                avatarUrl
+              }
+              createdAt
+              updatedAt
+              pushedAt
+            }
+          }
+        `;
+
+        const data = await client.graphql<{
+          repository: GraphQLVerifyRepo | null;
+        }>(query, { owner, name: repo });
+
+        const r = data.repository;
+        if (!r || !r.databaseId) {
+          throw new GitHubApiError("仓库不存在", 404, {
+            url: "graphql",
+            method: "POST",
+          });
+        }
+
+        return {
+          id: r.databaseId,
+          name: r.name,
+          full_name: r.nameWithOwner,
+          owner: {
+            login: r.owner.login,
+            avatar_url: r.owner.avatarUrl,
+          },
+          html_url: r.url,
+          description: r.description,
+          stargazers_count: r.stargazerCount,
+          forks_count: r.forkCount,
+          language: r.primaryLanguage?.name ?? null,
+          topics: (r.repositoryTopics.nodes || [])
+            .filter(Boolean)
+            .map((t) => t!.topic.name),
+          created_at: r.createdAt,
+          updated_at: r.updatedAt,
+          pushed_at: r.pushedAt,
+          homepage: r.homepageUrl,
+        };
       } catch (e) {
-        if (e instanceof GitHubApiError && e.status === 404) {
+        let finalError: unknown = e;
+
+        if (USE_GRAPHQL) {
+          console.warn("GraphQL repo verify failed, falling back to REST:", e);
+          try {
+            return await client.rest<GitHubRepo>(`/repos/${repoFullName}`);
+          } catch (restErr) {
+            finalError = restErr;
+          }
+        }
+
+        if (finalError instanceof GitHubApiError && finalError.status === 404) {
           throw new Error("仓库不存在");
         }
-        if (e instanceof GitHubApiError) {
-          throw new Error(`验证失败: ${e.status}`);
+        if (finalError instanceof GitHubApiError) {
+          throw new Error(`验证失败: ${finalError.status}`);
         }
-        throw e;
+        throw finalError;
       }
     },
     enabled: isAuthenticated && !!accessToken && !!repoFullName,

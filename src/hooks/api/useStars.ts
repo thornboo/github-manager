@@ -3,6 +3,10 @@ import { useAuth } from "@/contexts/AuthContext";
 import { StarredRepo } from "@/types/github";
 import { API_DEFAULTS, STORAGE_KEYS } from "@/lib/constants";
 import { GitHubApiClient } from "@/lib/github-api";
+import { fetchAllStarsGraphQL } from "@/hooks/api/useStarsGraphQL";
+
+// 默认启用 GraphQL；如需强制回退 REST，可设置 VITE_USE_GRAPHQL=false。
+const USE_GRAPHQL = import.meta.env.VITE_USE_GRAPHQL !== "false";
 
 // 从 localStorage 读取缓存
 export function getCachedStars(): StarredRepo[] | undefined {
@@ -109,8 +113,22 @@ export function useStars() {
   const cachedData = getCachedStars();
 
   return useQuery({
-    queryKey: ["stars", accessToken],
-    queryFn: () => fetchAllStars(accessToken!),
+    queryKey: ["stars", USE_GRAPHQL ? "graphql" : "rest", accessToken],
+    queryFn: async () => {
+      if (!accessToken) throw new Error("Missing access token");
+
+      if (!USE_GRAPHQL) {
+        return fetchAllStars(accessToken);
+      }
+
+      try {
+        return await fetchAllStarsGraphQL(accessToken);
+      } catch (e) {
+        // Fallback to REST to keep the app usable even if GraphQL schema/permissions differ.
+        console.warn("GraphQL stars fetch failed, falling back to REST:", e);
+        return fetchAllStars(accessToken);
+      }
+    },
     enabled: isAuthenticated && !!accessToken,
     initialData: cachedData,
     staleTime: Infinity, // 不自动重新获取，依赖手动同步

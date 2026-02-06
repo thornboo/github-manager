@@ -13,7 +13,11 @@ export function useStarsDashboardAI(params: {
   tags: RepoTag[];
   lists: StarList[] | undefined;
   selectedRepos: Set<number>;
-  addRepoToList: (input: { listId: string; repoId: number }) => void;
+  addRepoToList: (input: {
+    listId: string;
+    repoId: number;
+    repoFullName?: string;
+  }) => void;
   createTag: (name: string, color?: string) => RepoTag;
   addTagToRepo: (repoId: number, tagId: string) => void;
   setRepoNote: (repoId: number, note: string) => void;
@@ -193,7 +197,14 @@ export function useStarsDashboardAI(params: {
       suggestion.recommendedLists.forEach((listName) => {
         const list = lists?.find((l) => l.name === listName);
         if (list) {
-          addRepoToList({ listId: list.id, repoId: suggestion.repoId });
+          const repoFullName =
+            stars?.find((r) => r.id === suggestion.repoId)?.full_name ||
+            suggestion.repoName;
+          addRepoToList({
+            listId: list.id,
+            repoId: suggestion.repoId,
+            repoFullName,
+          });
         }
       });
 
@@ -213,7 +224,7 @@ export function useStarsDashboardAI(params: {
 
       toast.success(`已为 ${suggestion.repoName} 应用全部建议`);
     },
-    [addRepoToList, addTagToRepo, createTag, lists, setRepoNote, tags],
+    [addRepoToList, addTagToRepo, createTag, lists, setRepoNote, stars, tags],
   );
 
   const applyAll = useCallback(() => {
@@ -228,7 +239,14 @@ export function useStarsDashboardAI(params: {
       suggestion.recommendedLists.forEach((listName) => {
         const list = lists?.find((l) => l.name === listName);
         if (list) {
-          addRepoToList({ listId: list.id, repoId: suggestion.repoId });
+          const repoFullName =
+            stars?.find((r) => r.id === suggestion.repoId)?.full_name ||
+            suggestion.repoName;
+          addRepoToList({
+            listId: list.id,
+            repoId: suggestion.repoId,
+            repoFullName,
+          });
         }
       });
 
@@ -264,6 +282,7 @@ export function useStarsDashboardAI(params: {
     createTag,
     lists,
     setRepoNote,
+    stars,
     suggestions,
     tags,
   ]);
