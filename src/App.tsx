@@ -14,6 +14,8 @@ import Issues from "./pages/Issues";
 import Releases from "./pages/Releases";
 import Settings from "./pages/Settings";
 import NotFound from "./pages/NotFound";
+import { PWAPrompt } from "@/components/pwa/PWAPrompt";
+import { InstallPrompt } from "@/components/pwa/InstallPrompt";
 
 const queryClient = new QueryClient();
 
@@ -38,6 +40,8 @@ const App = () => (
                 <Route path="*" element={<NotFound />} />
               </Routes>
             </BrowserRouter>
+            <PWAPrompt />
+            <InstallPrompt />
           </TooltipProvider>
         </SyncProvider>
       </AuthProvider>
