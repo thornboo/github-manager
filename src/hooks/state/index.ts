@@ -4,3 +4,4 @@ export * from "./useReleases";
 export * from "./useLocalDataStore";
 export * from "./useTagsManager";
 export * from "./useRepoMetaManager";
+export * from "./useDataBackup";

@@ -1,4 +1,4 @@
-import { RefreshCw, Sparkles, LucideIcon } from "lucide-react";
+import { Database, RefreshCw, Sparkles, LucideIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface NavChild {
@@ -33,6 +33,11 @@ const navItems: NavItem[] = [
       { id: "ai-prompt", label: "提示词" },
       { id: "ai-options", label: "分析选项" },
     ],
+  },
+  {
+    id: "backup",
+    label: "数据备份",
+    icon: Database,
   },
 ];
 

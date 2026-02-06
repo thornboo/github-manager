@@ -4,6 +4,7 @@ import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { SyncSettingsForm } from "@/components/settings/SyncSettingsForm";
 import { AISettingsForm } from "@/components/settings/AISettingsForm";
+import { DataBackupSection } from "@/components/settings/DataBackupSection";
 import { SettingsNav } from "@/components/settings/SettingsNav";
 import { useSyncSettings } from "@/hooks/useSyncSettings";
 import { useAISettings } from "@/hooks/useAISettings";
@@ -27,7 +28,14 @@ function SettingsContent() {
 
   // 使用 IntersectionObserver 监听滚动
   useEffect(() => {
-    const sectionIds = ["sync", "ai", "ai-provider", "ai-prompt", "ai-options"];
+    const sectionIds = [
+      "sync",
+      "ai",
+      "ai-provider",
+      "ai-prompt",
+      "ai-options",
+      "backup",
+    ];
     const observers: IntersectionObserver[] = [];
 
     sectionIds.forEach((id) => {
@@ -104,6 +112,8 @@ function SettingsContent() {
               onUpdate={updateAISettings}
               onUpdateProvider={updateProvider}
             />
+
+            <DataBackupSection />
           </main>
         </div>
       </div>
