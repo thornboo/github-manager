@@ -6,6 +6,7 @@ import {
   safeJsonParse,
   safeReadJson,
   safeReadText,
+  validateProviderBaseUrl,
 } from "./_utils";
 
 export const config = { runtime: "edge" };
@@ -20,13 +21,14 @@ interface TestRequest {
 export default async function handler(req: Request): Promise<Response> {
   // CORS preflight
   if (req.method === "OPTIONS") {
-    return okCors();
+    return okCors(req);
   }
 
   if (req.method !== "POST") {
     return json(
       { success: false, error: "Method Not Allowed" },
       { status: 405 },
+      req,
     );
   }
 
@@ -34,16 +36,35 @@ export default async function handler(req: Request): Promise<Response> {
   try {
     body = await req.json();
   } catch {
-    return json({ success: false, error: "Invalid JSON" }, { status: 400 });
+    return json(
+      { success: false, error: "Invalid JSON" },
+      { status: 400 },
+      req,
+    );
   }
 
   const { baseUrl, apiKey, model } = body;
 
   if (!baseUrl || !apiKey) {
-    return json({ success: false, error: "缺少 Base URL 或 API Key" });
+    return json(
+      { success: false, error: "缺少 Base URL 或 API Key" },
+      { status: 400 },
+      req,
+    );
   }
 
-  const endpoint = normalizeChatCompletionsEndpoint(baseUrl);
+  const baseUrlValidation = validateProviderBaseUrl(baseUrl);
+  if (baseUrlValidation.valid === false) {
+    return json(
+      { success: false, error: baseUrlValidation.message },
+      { status: 400 },
+      req,
+    );
+  }
+
+  const endpoint = normalizeChatCompletionsEndpoint(
+    baseUrlValidation.normalizedBaseUrl,
+  );
 
   const testPayload = {
     model: model || "gpt-3.5-turbo",
@@ -85,16 +106,16 @@ export default async function handler(req: Request): Promise<Response> {
         errorMessage = "端点不存在，请检查 Base URL";
       } else if (response.status === 429) {
         // Rate limit 表示连通性没问题
-        return json({ success: true });
+        return json({ success: true }, {}, req);
       }
 
-      return json({ success: false, error: errorMessage });
+      return json({ success: false, error: errorMessage }, {}, req);
     }
 
     const data = await safeReadJson<unknown>(response);
     const modelName =
       isRecord(data) && typeof data.model === "string" ? data.model : undefined;
-    return json({ success: true, model: modelName });
+    return json({ success: true, model: modelName }, {}, req);
   } catch (error) {
     let errorMessage = "连接失败";
     if (error instanceof Error) {
@@ -102,6 +123,6 @@ export default async function handler(req: Request): Promise<Response> {
         ? "无法连接到服务器，请检查 URL"
         : error.message;
     }
-    return json({ success: false, error: errorMessage }, { status: 500 });
+    return json({ success: false, error: errorMessage }, { status: 500 }, req);
   }
 }

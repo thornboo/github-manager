@@ -1,8 +1,11 @@
 import { getDefaultSystemPrompt } from "../src/lib/prompts";
 import {
+  buildCorsHeaders,
   normalizeChatCompletionsEndpoint,
+  rejectDisallowedOrigin,
   safeReadJson,
   safeReadText,
+  validateProviderBaseUrl,
 } from "./_utils";
 
 export const config = { runtime: "edge" };
@@ -56,16 +59,21 @@ type SuggestionPayload = {
   reasoning: string;
 };
 
-const SSE_HEADERS: Record<string, string> = {
+const SSE_BASE_HEADERS: Record<string, string> = {
   "Content-Type": "text/event-stream",
   "Cache-Control": "no-cache, no-transform",
   Connection: "keep-alive",
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "content-type",
-  "Access-Control-Allow-Methods": "POST, OPTIONS",
   // 禁用中间层缓冲（部分代理/网关会缓冲流式响应）
   "X-Accel-Buffering": "no",
 };
+
+function buildSSEHeaders(request: Request): Record<string, string> {
+  return buildCorsHeaders(request, {
+    allowHeaders: "content-type",
+    allowMethods: "POST, OPTIONS",
+    extraHeaders: SSE_BASE_HEADERS,
+  });
+}
 
 class StreamAnalysisError extends Error {
   recoverable: boolean;
@@ -459,20 +467,29 @@ async function analyzeRepoWithRetry(
 }
 
 export default async function handler(req: Request): Promise<Response> {
+  const blocked = rejectDisallowedOrigin(req);
+  if (blocked) return blocked;
+
   // CORS preflight
   if (req.method === "OPTIONS") {
-    return new Response(null, { headers: SSE_HEADERS });
+    return new Response(null, { headers: buildSSEHeaders(req) });
   }
 
   if (req.method !== "POST") {
-    return new Response("Method not allowed", { status: 405 });
+    return new Response("Method not allowed", {
+      status: 405,
+      headers: buildSSEHeaders(req),
+    });
   }
 
   let body: StreamRequest;
   try {
     body = (await req.json()) as StreamRequest;
   } catch {
-    return new Response("Invalid JSON", { status: 400 });
+    return new Response("Invalid JSON", {
+      status: 400,
+      headers: buildSSEHeaders(req),
+    });
   }
 
   const {
@@ -486,12 +503,31 @@ export default async function handler(req: Request): Promise<Response> {
   } = body;
 
   if (!provider?.baseUrl || !provider?.apiKey) {
-    return new Response("Missing provider config", { status: 400 });
+    return new Response("Missing provider config", {
+      status: 400,
+      headers: buildSSEHeaders(req),
+    });
+  }
+
+  const baseUrlValidation = validateProviderBaseUrl(provider.baseUrl);
+  if (baseUrlValidation.valid === false) {
+    return new Response(baseUrlValidation.message, {
+      status: 400,
+      headers: buildSSEHeaders(req),
+    });
   }
 
   if (!repos || repos.length === 0) {
-    return new Response("No repos to analyze", { status: 400 });
+    return new Response("No repos to analyze", {
+      status: 400,
+      headers: buildSSEHeaders(req),
+    });
   }
+
+  const normalizedProvider: ProviderConfig = {
+    ...provider,
+    baseUrl: baseUrlValidation.normalizedBaseUrl,
+  };
 
   const systemPrompt = getSystemPrompt(depth, customSystemPrompt, userPrompt);
 
@@ -525,7 +561,7 @@ export default async function handler(req: Request): Promise<Response> {
             const suggestion = await analyzeRepoWithRetry(
               repo,
               {
-                provider,
+                provider: normalizedProvider,
                 existingLists,
                 existingTags,
                 systemPrompt,
@@ -597,5 +633,5 @@ export default async function handler(req: Request): Promise<Response> {
     },
   });
 
-  return new Response(stream, { headers: SSE_HEADERS });
+  return new Response(stream, { headers: buildSSEHeaders(req) });
 }

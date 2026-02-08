@@ -5,6 +5,7 @@ import {
   okCors,
   safeReadJson,
   safeReadText,
+  validateProviderBaseUrl,
 } from "./_utils";
 
 interface RepoInput {
@@ -111,8 +112,8 @@ function getRequestId(): string {
   return `${Date.now()}-${Math.random().toString(16).slice(2)}`;
 }
 
-export function OPTIONS(): Response {
-  return okCors();
+export function OPTIONS(req: Request): Response {
+  return okCors(req);
 }
 
 export async function POST(req: Request): Promise<Response> {
@@ -120,7 +121,7 @@ export async function POST(req: Request): Promise<Response> {
   try {
     body = await req.json();
   } catch {
-    return json({ error: "Invalid JSON" }, { status: 400 });
+    return json({ error: "Invalid JSON" }, { status: 400 }, req);
   }
 
   const {
@@ -134,11 +135,16 @@ export async function POST(req: Request): Promise<Response> {
   } = body;
 
   if (!provider?.baseUrl || !provider?.apiKey) {
-    return json({ error: "请先配置 AI 服务商" }, { status: 400 });
+    return json({ error: "请先配置 AI 服务商" }, { status: 400 }, req);
+  }
+
+  const baseUrlValidation = validateProviderBaseUrl(provider.baseUrl);
+  if (baseUrlValidation.valid === false) {
+    return json({ error: baseUrlValidation.message }, { status: 400 }, req);
   }
 
   if (!repos || repos.length === 0) {
-    return json({ suggestions: [] });
+    return json({ suggestions: [] }, {}, req);
   }
 
   const systemPrompt = getSystemPrompt(
@@ -159,7 +165,9 @@ export async function POST(req: Request): Promise<Response> {
 
   const analysisPrompt = `请分析以下仓库并提供分类建议：\n\n仓库列表：\n${reposInfo}\n\n现有 Lists: ${listsInfo}\n\n现有标签: ${tagsInfo}\n\n请用 JSON 格式返回，包含 "suggestions" 数组。每个建议应包含：\n- repoId: 仓库的数字 ID（使用上面 [ID: xxx] 中的数字，这是必须精确使用的值）\n- recommendedLists: 建议添加到的 Lists 名称数组\n- suggestedTags: 建议的标签数组，每个标签包含 { name, color (十六进制), isNew (boolean) }\n- summary: 仓库的中文总结（50-100字），概括核心功能、技术特点和适用场景\n- reasoning: 分类理由的简要说明\n\n重要：repoId 必须使用仓库前面 [ID: xxx] 中显示的精确数字 ID，不要使用索引！`;
 
-  const endpoint = normalizeChatCompletionsEndpoint(provider.baseUrl);
+  const endpoint = normalizeChatCompletionsEndpoint(
+    baseUrlValidation.normalizedBaseUrl,
+  );
   const requestId = getRequestId();
   const startedAt = Date.now();
   const upstreamTimeoutMs = getUpstreamTimeoutMs(depth);
@@ -270,6 +278,7 @@ export async function POST(req: Request): Promise<Response> {
           error: `AI 请求超时（>${Math.round(upstreamTimeoutMs / 1000)}s）。建议降低“批量分析”的单次数量、选择更快的模型，或把分析深度改为 quick/simple。`,
         },
         { status: 504 },
+        req,
       );
     }
 
@@ -280,6 +289,7 @@ export async function POST(req: Request): Promise<Response> {
     return json(
       { error: "无法连接到 AI 服务，请检查 Base URL 或稍后重试" },
       { status: 502 },
+      req,
     );
   } finally {
     clearTimeout(timeoutId);
@@ -287,21 +297,25 @@ export async function POST(req: Request): Promise<Response> {
 
   if (!response.ok) {
     if (response.status === 429) {
-      return json({ error: "请求过于频繁，请稍后再试" }, { status: 429 });
+      return json({ error: "请求过于频繁，请稍后再试" }, { status: 429 }, req);
     }
     if (response.status === 402) {
-      return json({ error: "AI 服务额度不足，请充值" }, { status: 402 });
+      return json({ error: "AI 服务额度不足，请充值" }, { status: 402 }, req);
     }
     if (response.status === 401) {
-      return json({ error: "AI API Key 无效或已过期" }, { status: 401 });
+      return json({ error: "AI API Key 无效或已过期" }, { status: 401 }, req);
     }
     if (response.status === 404) {
-      return json({ error: "AI 端点不存在，请检查 Base URL" }, { status: 404 });
+      return json(
+        { error: "AI 端点不存在，请检查 Base URL" },
+        { status: 404 },
+        req,
+      );
     }
     const errorText = await safeReadText(response);
     // 不透出上游的原始错误（可能包含敏感信息/实现细节）
     void errorText;
-    return json({ error: "AI 分析服务出错" }, { status: 500 });
+    return json({ error: "AI 分析服务出错" }, { status: 500 }, req);
   }
 
   const aiResponse = (await safeReadJson<unknown>(
@@ -318,7 +332,7 @@ export async function POST(req: Request): Promise<Response> {
   if (toolCall && toolCall.function?.name === "provide_suggestions") {
     try {
       const suggestions = JSON.parse(toolCall.function.arguments);
-      return json(suggestions);
+      return json(suggestions, {}, req);
     } catch {
       // ignore and try fallback
     }
@@ -330,7 +344,7 @@ export async function POST(req: Request): Promise<Response> {
     const jsonMatch = content.match(/\{[\s\S]*"suggestions"[\s\S]*\}/);
     if (jsonMatch) {
       try {
-        return json(JSON.parse(jsonMatch[0]));
+        return json(JSON.parse(jsonMatch[0]), {}, req);
       } catch {
         // ignore
       }
@@ -340,5 +354,6 @@ export async function POST(req: Request): Promise<Response> {
   return json(
     { error: "AI 返回格式错误，请尝试使用支持 Function Calling 的模型" },
     { status: 500 },
+    req,
   );
 }

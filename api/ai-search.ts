@@ -4,6 +4,7 @@ import {
   okCors,
   safeReadJson,
   safeReadText,
+  validateProviderBaseUrl,
 } from "./_utils";
 
 export const config = { runtime: "edge" };
@@ -49,28 +50,37 @@ interface SearchRequest {
 export default async function handler(req: Request): Promise<Response> {
   // CORS preflight
   if (req.method === "OPTIONS") {
-    return okCors();
+    return okCors(req);
   }
 
   if (req.method !== "POST") {
-    return json({ matches: [], error: "Method Not Allowed" }, { status: 405 });
+    return json(
+      { matches: [], error: "Method Not Allowed" },
+      { status: 405 },
+      req,
+    );
   }
 
   let body: SearchRequest;
   try {
     body = await req.json();
   } catch {
-    return json({ matches: [], error: "Invalid JSON" }, { status: 400 });
+    return json({ matches: [], error: "Invalid JSON" }, { status: 400 }, req);
   }
 
   const { query, repos, provider } = body;
 
   if (!provider?.baseUrl || !provider?.apiKey) {
-    return json({ error: "请先配置 AI 服务商" }, { status: 400 });
+    return json({ error: "请先配置 AI 服务商" }, { status: 400 }, req);
+  }
+
+  const baseUrlValidation = validateProviderBaseUrl(provider.baseUrl);
+  if (baseUrlValidation.valid === false) {
+    return json({ error: baseUrlValidation.message }, { status: 400 }, req);
   }
 
   if (!query?.trim() || !repos || repos.length === 0) {
-    return json({ matches: [] });
+    return json({ matches: [] }, {}, req);
   }
 
   const systemPrompt = `你是一个智能的 GitHub 仓库搜索助手。用户会给你一个搜索查询和一组仓库信息，你需要理解用户的搜索意图并找出最匹配的仓库。\n\n搜索能力：\n1. 语义理解：理解用户查询的真实意图，不仅仅是关键词匹配\n2. 多维度匹配：综合考虑仓库名称、描述、编程语言、GitHub Topics、用户标签、用户备注\n3. 模糊匹配：处理同义词、相关概念（如"图表库"能匹配到 chart, visualization, d3 等）\n4. 用户上下文：用户标签和备注代表用户对仓库的个人理解，应给予较高权重\n\n匹配示例：\n- 查询"数据可视化工具" → 匹配描述包含 chart/graph/visualization 的仓库，或有相关 Topics\n- 查询"我标记过的 React 状态管理" → 查找用户标签/备注中包含 React、state management 相关内容的仓库\n- 查询"Python 爬虫框架" → 匹配语言为 Python 且 Topics/描述涉及 spider/crawler/scraping 的仓库\n\n返回规则：\n- 只返回确实相关的仓库，不要强行匹配\n- relevance 分三级：high（高度相关）、medium（中等相关）、low（弱相关）\n- reason 简要说明匹配原因（1句话）\n- 按相关度从高到低排序`;
@@ -93,7 +103,9 @@ export default async function handler(req: Request): Promise<Response> {
 
   const userPrompt = `搜索查询: "${query}"\n\n仓库列表：\n${reposInfo}\n\n请找出与查询相关的仓库，返回 JSON 格式的匹配结果。`;
 
-  const endpoint = normalizeChatCompletionsEndpoint(provider.baseUrl);
+  const endpoint = normalizeChatCompletionsEndpoint(
+    baseUrlValidation.normalizedBaseUrl,
+  );
 
   const response = await fetch(endpoint, {
     method: "POST",
@@ -155,14 +167,14 @@ export default async function handler(req: Request): Promise<Response> {
 
   if (!response.ok) {
     if (response.status === 429) {
-      return json({ error: "请求过于频繁，请稍后再试" }, { status: 429 });
+      return json({ error: "请求过于频繁，请稍后再试" }, { status: 429 }, req);
     }
     if (response.status === 402) {
-      return json({ error: "AI 服务额度不足" }, { status: 402 });
+      return json({ error: "AI 服务额度不足" }, { status: 402 }, req);
     }
     const errorText = await safeReadText(response);
     void errorText;
-    return json({ error: "AI 搜索服务出错" }, { status: 500 });
+    return json({ error: "AI 搜索服务出错" }, { status: 500 }, req);
   }
 
   const aiResponse = (await safeReadJson<unknown>(
@@ -173,7 +185,7 @@ export default async function handler(req: Request): Promise<Response> {
   if (toolCall && toolCall.function?.name === "return_search_results") {
     try {
       const result = JSON.parse(toolCall.function.arguments);
-      return json(result);
+      return json(result, {}, req);
     } catch {
       // ignore and try fallback
     }
@@ -185,7 +197,7 @@ export default async function handler(req: Request): Promise<Response> {
     if (jsonMatch) {
       try {
         const result = JSON.parse(jsonMatch[0]);
-        return json(result);
+        return json(result, {}, req);
       } catch {
         // ignore
       }
@@ -193,5 +205,5 @@ export default async function handler(req: Request): Promise<Response> {
   }
 
   // 与 supabase 版保持一致：解析失败时返回空结果
-  return json({ matches: [] });
+  return json({ matches: [] }, {}, req);
 }
