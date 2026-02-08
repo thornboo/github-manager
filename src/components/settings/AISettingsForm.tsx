@@ -372,8 +372,8 @@ export function AISettingsForm({
                   清空 AI 分析缓存
                 </Button>
                 <p className="mt-2 text-xs text-muted-foreground">
-                  缓存用于避免重复调用 AI（默认 24
-                  小时）。清空后下次分析会重新请求。
+                  缓存用于避免重复调用 AI（默认 24 小时，最多 500 条，按 LRU
+                  自动驱逐）。清空后下次分析会重新请求。
                 </p>
               </div>
             </div>

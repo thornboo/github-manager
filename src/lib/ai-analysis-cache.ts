@@ -6,9 +6,14 @@ import type {
 
 const CACHE_STORAGE_KEY = "ai_analysis_cache_v1";
 const CACHE_TTL_MS = 24 * 60 * 60 * 1000; // 24h
+const CACHE_MAX_ENTRIES = 500;
+
+export const AI_ANALYSIS_CACHE_TTL_MS = CACHE_TTL_MS;
+export const AI_ANALYSIS_CACHE_MAX_ENTRIES = CACHE_MAX_ENTRIES;
 
 type CacheEntry = {
   timestamp: number;
+  lastAccessedAt?: number;
   suggestion: RepoSuggestion;
 };
 
@@ -80,8 +85,18 @@ function readStore(): CacheStore {
 function writeStore(store: CacheStore): void {
   try {
     localStorage.setItem(CACHE_STORAGE_KEY, JSON.stringify(store));
-  } catch {
-    // Ignore quota/security errors.
+  } catch (error) {
+    // Keep cache writes best-effort, but surface quota issues for diagnosis.
+    if (
+      typeof DOMException !== "undefined" &&
+      error instanceof DOMException &&
+      error.name === "QuotaExceededError"
+    ) {
+      console.warn("AI analysis cache quota exceeded, skip write");
+      return;
+    }
+
+    // Ignore other storage/security errors.
   }
 }
 
@@ -93,12 +108,47 @@ function pruneExpiredEntries(store: CacheStore, now: number): boolean {
       changed = true;
       continue;
     }
+
+    const normalizedLastAccessedAt =
+      typeof entry.lastAccessedAt === "number"
+        ? entry.lastAccessedAt
+        : entry.timestamp;
+    if (entry.lastAccessedAt !== normalizedLastAccessedAt) {
+      entry.lastAccessedAt = normalizedLastAccessedAt;
+      changed = true;
+    }
+
     if (now - entry.timestamp > CACHE_TTL_MS) {
       delete store.entries[key];
       changed = true;
     }
   }
   return changed;
+}
+
+function enforceCapacityByLRU(store: CacheStore): boolean {
+  const records = Object.entries(store.entries);
+  if (records.length <= CACHE_MAX_ENTRIES) {
+    return false;
+  }
+
+  const overflow = records.length - CACHE_MAX_ENTRIES;
+  const keysToEvict = records
+    .sort(([, a], [, b]) => {
+      const aAccessTime =
+        typeof a.lastAccessedAt === "number" ? a.lastAccessedAt : a.timestamp;
+      const bAccessTime =
+        typeof b.lastAccessedAt === "number" ? b.lastAccessedAt : b.timestamp;
+      return aAccessTime - bAccessTime;
+    })
+    .slice(0, overflow)
+    .map(([key]) => key);
+
+  for (const key of keysToEvict) {
+    delete store.entries[key];
+  }
+
+  return keysToEvict.length > 0;
 }
 
 function buildEntryKey(contextHash: string, repoId: number): string {
@@ -111,10 +161,19 @@ export function getCachedSuggestion(
 ): RepoSuggestion | null {
   const now = Date.now();
   const store = readStore();
-  const changed = pruneExpiredEntries(store, now);
+  let changed = pruneExpiredEntries(store, now);
 
-  const entry = store.entries[buildEntryKey(contextHash, repoId)];
-  if (changed) writeStore(store);
+  const key = buildEntryKey(contextHash, repoId);
+  const entry = store.entries[key];
+
+  if (entry && entry.lastAccessedAt !== now) {
+    entry.lastAccessedAt = now;
+    changed = true;
+  }
+
+  if (changed) {
+    writeStore(store);
+  }
 
   if (!entry) return null;
   if (now - entry.timestamp > CACHE_TTL_MS) return null;
@@ -130,8 +189,10 @@ export function setCachedSuggestion(
   pruneExpiredEntries(store, now);
   store.entries[buildEntryKey(contextHash, suggestion.repoId)] = {
     timestamp: now,
+    lastAccessedAt: now,
     suggestion,
   };
+  enforceCapacityByLRU(store);
   writeStore(store);
 }
 
