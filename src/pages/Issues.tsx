@@ -1,11 +1,13 @@
 import { useState, useMemo, useEffect } from "react";
-import { Search, CircleDot, CheckCircle2 } from "lucide-react";
+import { Search, CircleDot, CheckCircle2, RefreshCw } from "lucide-react";
 import { Header } from "@/components/layout/Header";
 import { useSyncContext } from "@/contexts/SyncContext";
 import { IssueCard } from "@/components/issues/IssueCard";
+import { EmptyState } from "@/components/common/EmptyState";
+import { SkeletonLoading } from "@/components/common/SkeletonLoading";
 import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Skeleton } from "@/components/ui/skeleton";
 import { useSearchParams } from "react-router-dom";
 import {
   Select,
@@ -15,13 +17,16 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { IssueSource } from "@/hooks/useIssues";
+import { useDebounce } from "@/hooks/useDebounce";
 
 type IssueFilter = "all" | "open" | "closed";
 type IssueSourceFilter = IssueSource | "all";
 
 export default function Issues() {
-  const { issues, isLoading } = useSyncContext();
+  const { issues, isLoading, isSyncing, issuesError, triggerSync } =
+    useSyncContext();
   const [search, setSearch] = useState("");
+  const debouncedSearch = useDebounce(search, 300);
   const [filter, setFilter] = useState<IssueFilter>("all");
   const [source, setSource] = useState<IssueSourceFilter>("created");
   const [searchParams] = useSearchParams();
@@ -64,8 +69,8 @@ export default function Issues() {
     }
 
     // 搜索
-    if (search.trim()) {
-      const searchLower = search.toLowerCase();
+    if (debouncedSearch.trim()) {
+      const searchLower = debouncedSearch.toLowerCase();
       filtered = filtered.filter(
         (issue) =>
           issue.title.toLowerCase().includes(searchLower) ||
@@ -74,7 +79,7 @@ export default function Issues() {
     }
 
     return filtered;
-  }, [currentIssues, filter, search]);
+  }, [currentIssues, filter, debouncedSearch]);
 
   const counts = useMemo(() => {
     return {
@@ -83,6 +88,8 @@ export default function Issues() {
       closed: currentIssues.filter((issue) => issue.state === "closed").length,
     };
   }, [currentIssues]);
+
+  const hasIssuesLoadError = Boolean(issuesError && !issues);
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
@@ -143,17 +150,31 @@ export default function Issues() {
         </div>
 
         {isLoading && !issues ? (
-          <div className="space-y-3">
-            {Array.from({ length: 6 }).map((_, i) => (
-              <Skeleton key={i} className="h-24 w-full rounded-lg" />
-            ))}
-          </div>
+          <SkeletonLoading variant="list" count={6} />
+        ) : hasIssuesLoadError ? (
+          <EmptyState
+            title="Issues 加载失败"
+            description={issuesError || "请稍后重试"}
+            action={
+              <Button
+                variant="outline"
+                onClick={() => void triggerSync()}
+                disabled={isSyncing}
+                className="gap-2"
+              >
+                <RefreshCw
+                  className={isSyncing ? "h-4 w-4 animate-spin" : "h-4 w-4"}
+                />
+                重试
+              </Button>
+            }
+          />
         ) : filteredIssues.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-12 text-center">
             <CircleDot className="h-12 w-12 text-muted-foreground mb-4" />
             <h3 className="text-lg font-medium">暂无 Issues</h3>
             <p className="text-sm text-muted-foreground">
-              {search
+              {debouncedSearch
                 ? "没有找到匹配的 Issue"
                 : source === "created"
                   ? "你还没有创建过 Issue"

@@ -11,6 +11,7 @@ import { VirtualStarsList } from "@/components/stars/VirtualStarsList";
 import { EmptyState } from "@/components/common/EmptyState";
 import { LoadingOverlay } from "@/components/common/LoadingOverlay";
 import { ScrollToTop } from "@/components/layout/ScrollToTop";
+import { Button } from "@/components/ui/button";
 import {
   useFilteredRepos,
   useSortedRepos,
@@ -19,6 +20,9 @@ import {
 import { useStarsDashboardUrlState } from "@/hooks/ui/useStarsDashboardUrlState";
 import { useIdSelection } from "@/hooks/ui/useIdSelection";
 import { useResponsiveColumns } from "@/hooks/ui/useResponsiveColumns";
+import { useDebounce } from "@/hooks/useDebounce";
+import { cn } from "@/lib/utils";
+import { RefreshCw } from "lucide-react";
 import type { SearchMode, ViewMode } from "@/types/ui";
 
 interface StarsDashboardProps {
@@ -44,7 +48,9 @@ export function StarsDashboard({
     data: stars,
     dataUpdatedAt: starsUpdatedAt,
     isLoading,
+    isRefetching,
     error,
+    refetch,
   } = useStars();
   const { data: listRepoIds, isLoading: isLoadingList } =
     useListStars(selectedList);
@@ -55,6 +61,7 @@ export function StarsDashboard({
   const { tags, createTag } = useTags();
 
   const [search, setSearch] = useState("");
+  const debouncedSearch = useDebounce(search, 300);
   const [viewMode, setViewMode] = useState<ViewMode>("card");
   const [searchMode, setSearchMode] = useState<SearchMode>("normal");
   const [searchParams] = useSearchParams();
@@ -87,6 +94,7 @@ export function StarsDashboard({
     setRepoNote,
   });
   const { clearSearch } = ai;
+  const effectiveSearch = searchMode === "normal" ? debouncedSearch : search;
 
   const languages = useMemo(() => (stars ? getLanguages(stars) : []), [stars]);
 
@@ -107,7 +115,7 @@ export function StarsDashboard({
     selectedTag,
     repoMeta,
     selectedTopic,
-    search,
+    search: effectiveSearch,
     language,
     searchMode,
     searchResults: ai.searchResults,
@@ -187,7 +195,7 @@ export function StarsDashboard({
   // 注意：必须在任何 early return 之前调用 hooks，保证调用顺序一致。
   const resetScrollKey = `${selectedList ?? ""}|${selectedTag ?? ""}|${
     selectedTopic ?? ""
-  }|${searchMode}|${search}|${language ?? ""}|${sortField}|${sortDirection}`;
+  }|${searchMode}|${effectiveSearch}|${language ?? ""}|${sortField}|${sortDirection}`;
   useEffect(() => {
     if (!didInitResetRef.current) {
       didInitResetRef.current = true;
@@ -275,12 +283,23 @@ export function StarsDashboard({
         {isLoadingData ? (
           <LoadingOverlay />
         ) : hasError ? (
-          <div className="flex items-center justify-center py-20">
-            <div className="text-center text-destructive">
-              <p>加载失败</p>
-              <p className="text-sm mt-1">{error?.message}</p>
-            </div>
-          </div>
+          <EmptyState
+            title="加载失败"
+            description={error?.message || "获取 Star 数据时发生异常"}
+            action={
+              <Button
+                variant="outline"
+                onClick={() => void refetch()}
+                disabled={isRefetching}
+                className="gap-2"
+              >
+                <RefreshCw
+                  className={cn("h-4 w-4", isRefetching && "animate-spin")}
+                />
+                重试
+              </Button>
+            }
+          />
         ) : !hasStars ? (
           <EmptyState
             title="还没有 Star 任何仓库"

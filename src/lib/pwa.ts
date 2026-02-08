@@ -7,8 +7,26 @@ export interface PWAInitOptions {
   onRegisterError?: (error: unknown) => void;
 }
 
+const UPDATE_CHECK_INTERVAL_MS = 60 * 60 * 1000;
+
 let updateSWFunction: (() => Promise<void>) | null = null;
+let updateCheckInterval: ReturnType<typeof setInterval> | null = null;
 let didInit = false;
+
+function clearUpdateCheckInterval(): void {
+  if (!updateCheckInterval) return;
+  clearInterval(updateCheckInterval);
+  updateCheckInterval = null;
+}
+
+function setupUpdateCheckInterval(
+  registration: ServiceWorkerRegistration,
+): void {
+  clearUpdateCheckInterval();
+  updateCheckInterval = setInterval(() => {
+    registration.update().catch(() => {});
+  }, UPDATE_CHECK_INTERVAL_MS);
+}
 
 export function initPWA(options: PWAInitOptions = {}): void {
   if (didInit) return;
@@ -31,16 +49,23 @@ export function initPWA(options: PWAInitOptions = {}): void {
       onRegistered?.(registration);
 
       // 定期检查更新（每小时一次）：让 “needRefresh” 更及时出现。
-      setInterval(
-        () => {
-          registration.update().catch(() => {});
-        },
-        60 * 60 * 1000,
-      );
+      setupUpdateCheckInterval(registration);
     },
     onRegisterError(error) {
       onRegisterError?.(error);
     },
+  });
+}
+
+export function cleanupPWA(): void {
+  clearUpdateCheckInterval();
+  updateSWFunction = null;
+  didInit = false;
+}
+
+if (import.meta.hot) {
+  import.meta.hot.dispose(() => {
+    cleanupPWA();
   });
 }
 

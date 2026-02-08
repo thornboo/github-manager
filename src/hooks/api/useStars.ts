@@ -131,10 +131,11 @@ export function useStars() {
     },
     enabled: isAuthenticated && !!accessToken,
     initialData: cachedData,
-    staleTime: Infinity, // 不自动重新获取，依赖手动同步
-    refetchOnWindowFocus: false,
+    staleTime: 5 * 60 * 1000,
+    gcTime: 30 * 60 * 1000,
+    refetchOnWindowFocus: true,
     refetchOnMount: false,
-    refetchOnReconnect: false,
+    refetchOnReconnect: true,
   });
 }
 

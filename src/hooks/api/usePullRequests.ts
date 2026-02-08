@@ -123,9 +123,10 @@ export function usePullRequests() {
     },
     enabled: isAuthenticated && !!accessToken && !!user?.login,
     initialData: cachedData,
-    staleTime: Infinity,
-    refetchOnWindowFocus: false,
+    staleTime: 5 * 60 * 1000,
+    gcTime: 30 * 60 * 1000,
+    refetchOnWindowFocus: true,
     refetchOnMount: false,
-    refetchOnReconnect: false,
+    refetchOnReconnect: true,
   });
 }
