@@ -19,6 +19,9 @@ interface SyncContextType {
     | { created: GitHubPullRequest[]; involved: GitHubPullRequest[] }
     | undefined;
   issues: { created: GitHubIssue[]; involved: GitHubIssue[] } | undefined;
+  starsError: string | null;
+  pullRequestsError: string | null;
+  issuesError: string | null;
   isLoading: boolean;
   isSyncing: boolean;
   syncStatus: SyncStatus;
@@ -29,24 +32,39 @@ interface SyncContextType {
 
 const SyncContext = createContext<SyncContextType | undefined>(undefined);
 
+function getErrorMessage(error: unknown): string {
+  if (error instanceof Error && error.message.trim()) {
+    return error.message;
+  }
+
+  if (typeof error === "string" && error.trim()) {
+    return error;
+  }
+
+  return "同步失败";
+}
+
 export function SyncProvider({ children }: { children: ReactNode }) {
   const { isAuthenticated } = useAuth();
   const {
     data: starsData,
     isLoading: starsLoading,
     isFetching: starsFetching,
+    error: starsError,
     refetch: refetchStars,
   } = useStars();
   const {
     data: prsData,
     isLoading: prsLoading,
     isFetching: prsFetching,
+    error: pullRequestsError,
     refetch: refetchPRs,
   } = usePullRequests();
   const {
     data: issuesData,
     isLoading: issuesLoading,
     isFetching: issuesFetching,
+    error: issuesError,
     refetch: refetchIssues,
   } = useIssues();
   const { settings, setLastSyncedAt, setSyncStatus, getTimeSinceLastSync } =
@@ -54,6 +72,12 @@ export function SyncProvider({ children }: { children: ReactNode }) {
 
   const isLoading = starsLoading || prsLoading || issuesLoading;
   const isFetching = starsFetching || prsFetching || issuesFetching;
+
+  const starsErrorMessage = starsError ? getErrorMessage(starsError) : null;
+  const pullRequestsErrorMessage = pullRequestsError
+    ? getErrorMessage(pullRequestsError)
+    : null;
+  const issuesErrorMessage = issuesError ? getErrorMessage(issuesError) : null;
 
   // 同步成功后保存到 localStorage
   useEffect(() => {
@@ -80,50 +104,45 @@ export function SyncProvider({ children }: { children: ReactNode }) {
     }
   }, [issuesData]);
 
+  const triggerSync = useCallback(async () => {
+    setSyncStatus("syncing");
+
+    try {
+      const [starsResult, prsResult, issuesResult] = await Promise.all([
+        refetchStars(),
+        refetchPRs(),
+        refetchIssues(),
+      ]);
+
+      const failedResult = [starsResult, prsResult, issuesResult].find(
+        (result) => result.isError,
+      );
+
+      if (failedResult) {
+        throw failedResult.error || new Error("同步失败");
+      }
+
+      setLastSyncedAt(new Date());
+      setSyncStatus("success");
+      setTimeout(() => setSyncStatus("idle"), 3000);
+    } catch (err) {
+      setSyncStatus("error", getErrorMessage(err));
+    }
+  }, [refetchStars, refetchPRs, refetchIssues, setLastSyncedAt, setSyncStatus]);
+
   // 自动同步逻辑
   useEffect(() => {
     if (!isAuthenticated || settings.mode !== "auto") return;
 
     const interval = setInterval(
       () => {
-        setSyncStatus("syncing");
-        Promise.all([refetchStars(), refetchPRs(), refetchIssues()])
-          .then(() => {
-            setLastSyncedAt(new Date());
-            setSyncStatus("success");
-            setTimeout(() => setSyncStatus("idle"), 3000);
-          })
-          .catch((err) => {
-            setSyncStatus("error", err?.message || "同步失败");
-          });
+        void triggerSync();
       },
       settings.autoSyncInterval * 60 * 1000,
     );
 
     return () => clearInterval(interval);
-  }, [
-    isAuthenticated,
-    settings.mode,
-    settings.autoSyncInterval,
-    refetchStars,
-    refetchPRs,
-    refetchIssues,
-    setLastSyncedAt,
-    setSyncStatus,
-  ]);
-
-  const triggerSync = useCallback(async () => {
-    setSyncStatus("syncing");
-    try {
-      await Promise.all([refetchStars(), refetchPRs(), refetchIssues()]);
-      setLastSyncedAt(new Date());
-      setSyncStatus("success");
-      setTimeout(() => setSyncStatus("idle"), 3000);
-    } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : "同步失败";
-      setSyncStatus("error", errorMessage);
-    }
-  }, [refetchStars, refetchPRs, refetchIssues, setLastSyncedAt, setSyncStatus]);
+  }, [isAuthenticated, settings.mode, settings.autoSyncInterval, triggerSync]);
 
   return (
     <SyncContext.Provider
@@ -131,6 +150,9 @@ export function SyncProvider({ children }: { children: ReactNode }) {
         stars: starsData,
         pullRequests: prsData,
         issues: issuesData,
+        starsError: starsErrorMessage,
+        pullRequestsError: pullRequestsErrorMessage,
+        issuesError: issuesErrorMessage,
         isLoading,
         isSyncing: isFetching,
         syncStatus: settings.lastSyncStatus as SyncStatus,

@@ -1,8 +1,11 @@
 import { useAuth } from "@/contexts/AuthContext";
 import { useSyncContext } from "@/contexts/SyncContext";
 import { LoginPage } from "@/components/auth/LoginPage";
+import { EmptyState } from "@/components/common/EmptyState";
+import { SkeletonLoading } from "@/components/common/SkeletonLoading";
 import { Header } from "@/components/layout/Header";
-import { Loader2 } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Loader2, RefreshCw } from "lucide-react";
 import { useDashboardStats } from "@/hooks/useDashboardStats";
 import { OverviewCards } from "@/components/dashboard/OverviewCards";
 import { OpenPRList } from "@/components/dashboard/OpenPRList";
@@ -15,7 +18,17 @@ import { useBatchReleases } from "@/hooks/useBatchReleases";
 import { useEffect } from "react";
 
 function DashboardContent() {
-  const { stars, pullRequests, issues, isLoading } = useSyncContext();
+  const {
+    stars,
+    pullRequests,
+    issues,
+    starsError,
+    pullRequestsError,
+    issuesError,
+    isLoading,
+    isSyncing,
+    triggerSync,
+  } = useSyncContext();
   const { subscriptions, updateLatestRelease } = useReleases();
   const { data: latestReleases } = useBatchReleases(subscriptions);
 
@@ -30,34 +43,66 @@ function DashboardContent() {
   }, [latestReleases, updateLatestRelease]);
 
   const stats = useDashboardStats(stars, pullRequests, issues, subscriptions);
+  const dataErrors = [
+    !stars && starsError ? `Stars: ${starsError}` : null,
+    !pullRequests && pullRequestsError ? `PR: ${pullRequestsError}` : null,
+    !issues && issuesError ? `Issues: ${issuesError}` : null,
+  ].filter((message): message is string => Boolean(message));
+
+  const hasBlockingError = !isLoading && dataErrors.length > 0;
+  const showInitialSkeleton = isLoading && !stars && !pullRequests && !issues;
 
   return (
     <div className="h-screen bg-background flex flex-col overflow-hidden">
       <Header />
       <main className="flex-1 p-6 overflow-y-auto">
-        <div className="max-w-6xl mx-auto space-y-6">
-          <OverviewCards
-            stats={stats}
-            isLoading={isLoading}
-            subscriptionCount={subscriptions.length}
-          />
-
-          <div className="grid gap-6 lg:grid-cols-2">
-            <OpenPRList prs={stats.openPRs} isLoading={isLoading} />
-            <OpenIssueList issues={stats.openIssues} isLoading={isLoading} />
-          </div>
-
-          <RecentStars repos={stats.recentStars} isLoading={isLoading} />
-
-          {/* 图表区域 */}
-          <div className="grid gap-6 md:grid-cols-2">
-            <LanguagePieChart
-              data={stats.languageDistribution}
-              isLoading={isLoading}
+        {showInitialSkeleton ? (
+          <SkeletonLoading variant="dashboard" />
+        ) : hasBlockingError ? (
+          <div className="max-w-4xl mx-auto">
+            <EmptyState
+              title="首页数据加载失败"
+              description={dataErrors.join("；")}
+              action={
+                <Button
+                  variant="outline"
+                  onClick={() => void triggerSync()}
+                  disabled={isSyncing}
+                  className="gap-2"
+                >
+                  <RefreshCw
+                    className={isSyncing ? "h-4 w-4 animate-spin" : "h-4 w-4"}
+                  />
+                  重试
+                </Button>
+              }
             />
-            <StarTrendChart data={stats.starTrend} isLoading={isLoading} />
           </div>
-        </div>
+        ) : (
+          <div className="max-w-6xl mx-auto space-y-6">
+            <OverviewCards
+              stats={stats}
+              isLoading={isLoading}
+              subscriptionCount={subscriptions.length}
+            />
+
+            <div className="grid gap-6 lg:grid-cols-2">
+              <OpenPRList prs={stats.openPRs} isLoading={isLoading} />
+              <OpenIssueList issues={stats.openIssues} isLoading={isLoading} />
+            </div>
+
+            <RecentStars repos={stats.recentStars} isLoading={isLoading} />
+
+            {/* 图表区域 */}
+            <div className="grid gap-6 md:grid-cols-2">
+              <LanguagePieChart
+                data={stats.languageDistribution}
+                isLoading={isLoading}
+              />
+              <StarTrendChart data={stats.starTrend} isLoading={isLoading} />
+            </div>
+          </div>
+        )}
       </main>
     </div>
   );

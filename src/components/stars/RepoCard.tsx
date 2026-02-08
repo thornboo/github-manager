@@ -9,7 +9,6 @@ import {
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Checkbox } from "@/components/ui/checkbox";
 import {
   Star,
   GitFork,
@@ -68,12 +67,15 @@ export const RepoCard = memo(function RepoCard({
     >
       {/* Selection checkbox - always visible */}
       {onToggleSelect && (
-        <div
-          className="absolute top-3 left-3 z-10 cursor-pointer"
+        <button
+          type="button"
+          className="absolute top-3 left-3 z-10 rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background"
           onClick={(e) => {
             e.stopPropagation();
             onToggleSelect(repo.id);
           }}
+          aria-pressed={Boolean(isSelected)}
+          aria-label={`${isSelected ? "取消选择" : "选择"} ${repo.full_name}`}
         >
           <div
             className={cn(
@@ -85,7 +87,7 @@ export const RepoCard = memo(function RepoCard({
           >
             {isSelected && <Check className="h-3.5 w-3.5" />}
           </div>
-        </div>
+        </button>
       )}
 
       {/* AI Analyze button */}
@@ -101,6 +103,7 @@ export const RepoCard = memo(function RepoCard({
                   e.stopPropagation();
                   onAnalyze(repo);
                 }}
+                aria-label={`AI 分析 ${repo.full_name}`}
               >
                 <Sparkles className="h-3.5 w-3.5" />
               </Button>
@@ -127,7 +130,10 @@ export const RepoCard = memo(function RepoCard({
                 className="hover:text-primary hover:underline inline-flex items-center gap-1 max-w-full transition-colors"
               >
                 <span className="truncate">{repo.full_name}</span>
-                <ExternalLink className="h-3 w-3 flex-shrink-0 opacity-50 group-hover:opacity-100 transition-opacity" />
+                <ExternalLink
+                  className="h-3 w-3 flex-shrink-0 opacity-50 group-hover:opacity-100 transition-opacity"
+                  aria-hidden="true"
+                />
               </a>
             </CardTitle>
             {repo.language && (

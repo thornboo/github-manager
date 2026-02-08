@@ -1,4 +1,4 @@
-import { useCallback } from "react";
+import { useCallback, useId } from "react";
 import { useVirtualList } from "@/hooks/ui/useVirtualList";
 import type { StarredRepo } from "@/types/github";
 import { RepoListItem } from "@/components/stars/RepoListItem";
@@ -21,6 +21,7 @@ export function VirtualStarsList({
   scrollElementRef,
   className,
 }: VirtualStarsListProps) {
+  const listDescriptionId = useId();
   const { virtualItems, totalSize, measureElement, scrollToIndex } =
     useVirtualList({
       items: repos,
@@ -98,8 +99,14 @@ export function VirtualStarsList({
   return (
     <div
       className={cn("w-full relative", className)}
+      role="list"
+      aria-label="Star 仓库列表"
+      aria-describedby={listDescriptionId}
       style={{ height: `${totalSize}px`, contain: "strict" }}
     >
+      <p id={listDescriptionId} className="sr-only">
+        共 {repos.length} 个仓库，可使用上下方向键快速浏览。
+      </p>
       {virtualItems.map((virtualItem) => {
         const repo = repos[virtualItem.index];
         if (!repo) return null;
@@ -110,7 +117,10 @@ export function VirtualStarsList({
             data-index={virtualItem.index}
             ref={measureElement}
             tabIndex={0}
-            role="article"
+            role="listitem"
+            aria-posinset={virtualItem.index + 1}
+            aria-setsize={repos.length}
+            aria-label={`${repo.full_name}，第 ${virtualItem.index + 1} 项`}
             data-repo-index={virtualItem.index}
             onKeyDown={(e) => handleItemKeyDown(e, virtualItem.index)}
             className="outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background"

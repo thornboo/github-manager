@@ -1,19 +1,23 @@
 import { useState } from "react";
 import { useAuth } from "@/contexts/AuthContext";
+import { useSyncContext } from "@/contexts/SyncContext";
 import { LoginPage } from "@/components/auth/LoginPage";
 import { Header } from "@/components/layout/Header";
 import { AppSidebar } from "@/components/layout/AppSidebar";
 import { StarsDashboard } from "@/components/stars/StarsDashboard";
+import { SkeletonLoading } from "@/components/common/SkeletonLoading";
 import { LocalDataProvider } from "@/contexts/LocalDataContext";
 import { Loader2, Menu } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 
 function AuthenticatedApp() {
+  const { stars, isLoading } = useSyncContext();
   const [selectedList, setSelectedList] = useState<string | null>(null);
   const [selectedTag, setSelectedTag] = useState<string | null>(null);
   const [selectedTopic, setSelectedTopic] = useState<string | null>(null);
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
+  const showInitialSkeleton = isLoading && !stars;
 
   const sidebar = (
     <AppSidebar
@@ -61,11 +65,18 @@ function AuthenticatedApp() {
 
           {/* Main content */}
           <main className="flex-1 p-6 overflow-hidden min-h-0">
-            <StarsDashboard
-              selectedList={selectedList}
-              selectedTag={selectedTag}
-              selectedTopic={selectedTopic}
-            />
+            {showInitialSkeleton ? (
+              <SkeletonLoading
+                variant="repo-grid"
+                className="h-full overflow-auto"
+              />
+            ) : (
+              <StarsDashboard
+                selectedList={selectedList}
+                selectedTag={selectedTag}
+                selectedTopic={selectedTopic}
+              />
+            )}
           </main>
         </div>
       </div>

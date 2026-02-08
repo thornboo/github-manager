@@ -43,7 +43,11 @@ export function Header({ sidebar }: HeaderProps) {
         )}
 
         {/* Logo */}
-        <Link to="/dashboard" className="flex items-center gap-2">
+        <Link
+          to="/dashboard"
+          className="flex items-center gap-2"
+          aria-label="前往 GitHub Manager 首页"
+        >
           <Star className="h-6 w-6 text-primary fill-primary" />
           <span className="font-semibold text-lg hidden sm:inline">
             GitHub Manager
@@ -56,11 +60,17 @@ export function Header({ sidebar }: HeaderProps) {
 
         {/* Navigation tabs - centered */}
         {isAuthenticated && (
-          <nav className="hidden md:flex items-center gap-1">
+          <nav
+            className="hidden md:flex items-center gap-1"
+            aria-label="主导航"
+          >
             {navItems.map((item) => (
               <Link
                 key={item.path}
                 to={item.path}
+                aria-current={
+                  location.pathname === item.path ? "page" : undefined
+                }
                 className={cn(
                   "px-3 py-1.5 text-sm font-medium rounded-md transition-colors",
                   location.pathname === item.path
@@ -91,7 +101,11 @@ export function Header({ sidebar }: HeaderProps) {
         {isAuthenticated && user && (
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="ghost" className="relative h-8 w-8 rounded-full">
+              <Button
+                variant="ghost"
+                className="relative h-8 w-8 rounded-full"
+                aria-label="打开用户菜单"
+              >
                 <Avatar className="h-8 w-8">
                   <AvatarImage src={user.avatar_url} alt={user.login} />
                   <AvatarFallback>
