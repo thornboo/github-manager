@@ -44,6 +44,7 @@ export function useStarsDashboardAI(params: {
     suggestions,
     analyzeRepos,
     analyzeSingleRepo,
+    cancelAnalysis,
     resetAnalysis,
     pauseAnalysis,
     resumeAnalysis,
@@ -122,6 +123,8 @@ export function useStarsDashboardAI(params: {
         lists?.map((l) => ({ id: l.id, name: l.name })) || [];
 
       try {
+        // 流式分析：先打开结果面板，边分析边展示结果
+        setShowResults(true);
         await analyzeRepos(
           reposToAnalyze,
           existingLists,
@@ -132,9 +135,12 @@ export function useStarsDashboardAI(params: {
           aiSettings.userPrompt,
         );
         setLastAnalyzedAt(new Date());
-        setShowResults(true);
         toast.success("分析完成！");
       } catch (err) {
+        if (err instanceof Error && err.name === "CancelledError") {
+          toast("已取消分析");
+          return;
+        }
         const errorMessage = err instanceof Error ? err.message : "分析失败";
         toast.error(errorMessage);
       }
@@ -300,6 +306,7 @@ export function useStarsDashboardAI(params: {
     isPaused,
     pauseAnalysis,
     resumeAnalysis,
+    cancelAnalysis,
     resetAnalysis,
     showResults,
     setShowResults,

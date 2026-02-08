@@ -261,7 +261,7 @@ export function StarsDashboard({
           onAnalyze={ai.analyze}
           onPause={ai.pauseAnalysis}
           onResume={ai.resumeAnalysis}
-          onCancel={ai.resetAnalysis}
+          onCancel={ai.cancelAnalysis}
           onViewResults={() => ai.setShowResults(true)}
           // AI Search props
           searchMode={searchMode}

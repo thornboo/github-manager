@@ -1,16 +1,23 @@
-import { useState, useCallback, useRef, useEffect } from "react";
-import { StarredRepo } from "@/types/github";
+import { useCallback, useEffect, useRef, useState } from "react";
+import type { StarredRepo } from "@/types/github";
 import type { RepoTag } from "@/types/local";
 import type {
   AIProviderConfig,
   AnalysisDepth,
   RepoSuggestion,
 } from "@/types/ai";
-import { postJson } from "@/lib/api";
+import {
+  buildAIAnalysisContextHash,
+  getCachedSuggestion,
+  setCachedSuggestion,
+} from "@/lib/ai-analysis-cache";
+import {
+  useAIStream,
+  type StreamError,
+  type StreamResult,
+} from "@/hooks/useAIStream";
 
 export type { AnalysisDepth, RepoSuggestion } from "@/types/ai";
-
-type RepoSuggestionPayload = Omit<RepoSuggestion, "repoName">;
 
 export interface AnalysisProgress {
   total: number;
@@ -19,34 +26,23 @@ export interface AnalysisProgress {
   error?: string;
 }
 
-interface AnalyzeRequest {
-  repos: Array<{
-    id: number;
-    name: string;
-    full_name: string;
-    description: string | null;
-    language: string | null;
-    topics: string[];
-  }>;
-  existingLists: Array<{ id: string; name: string }>;
-  existingTags: Array<{ id: string; name: string }>;
-  provider: AIProviderConfig;
-  depth: AnalysisDepth;
-  systemPrompt?: string;
-  userPrompt?: string;
+export class CancelledError extends Error {
+  constructor(message = "Cancelled") {
+    super(message);
+    this.name = "CancelledError";
+  }
 }
 
-const BATCH_SIZE_BY_DEPTH: Record<AnalysisDepth, number> = {
-  // quick 模式输入更少，单次可以处理更多；deep 模式计算更重，单次数量要更小以避免服务端超时
-  quick: 10,
-  simple: 5,
-  deep: 2,
-};
-
-function getBatchSize(depth: AnalysisDepth): number {
-  return BATCH_SIZE_BY_DEPTH[depth];
+function delay(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
 }
-const PROGRESS_INTERVAL_MS = 800; // 每 0.8 秒更新一次模拟进度
+
+function isAbortError(error: unknown): boolean {
+  return (
+    error instanceof Error &&
+    (error.name === "AbortError" || /aborted/i.test(error.message))
+  );
+}
 
 export function useAIAnalysis() {
   const [progress, setProgress] = useState<AnalysisProgress>({
@@ -56,24 +52,75 @@ export function useAIAnalysis() {
   });
   const [suggestions, setSuggestions] = useState<RepoSuggestion[]>([]);
   const [isPaused, setIsPaused] = useState(false);
+  const [errors, setErrors] = useState<StreamError[]>([]);
 
-  // Use refs to control pause/cancel state
+  // 控制暂停/取消
   const pausedRef = useRef(false);
   const cancelledRef = useRef(false);
-  const progressIntervalRef = useRef<number | null>(null);
+  const completedRepoIdsRef = useRef<Set<number>>(new Set());
+  const suggestionsRef = useRef<RepoSuggestion[]>([]);
+  const cacheContextHashRef = useRef<string | null>(null);
 
-  // 清理进度模拟定时器
-  const clearProgressInterval = useCallback(() => {
-    if (progressIntervalRef.current) {
-      clearInterval(progressIntervalRef.current);
-      progressIntervalRef.current = null;
+  const handleStreamResult = useCallback((result: StreamResult) => {
+    if (cancelledRef.current) return;
+
+    const repoId = result.repoId;
+    if (!Number.isFinite(repoId)) return;
+
+    const completed = completedRepoIdsRef.current;
+    if (completed.has(repoId)) return;
+
+    completed.add(repoId);
+
+    const suggestion: RepoSuggestion = {
+      repoId,
+      repoName: result.repoName,
+      recommendedLists: result.suggestion.recommendedLists || [],
+      suggestedTags: result.suggestion.suggestedTags || [],
+      summary: result.suggestion.summary || "",
+      reasoning: result.suggestion.reasoning || "",
+    };
+
+    suggestionsRef.current = [...suggestionsRef.current, suggestion];
+    setSuggestions((prev) => [...prev, suggestion]);
+    setProgress((prev) => ({
+      ...prev,
+      completed: completed.size,
+    }));
+
+    const contextHash = cacheContextHashRef.current;
+    if (contextHash) {
+      setCachedSuggestion(contextHash, suggestion);
     }
   }, []);
 
-  // 组件卸载时清理定时器
+  const handleStreamError = useCallback((error: StreamError) => {
+    if (cancelledRef.current) return;
+
+    setErrors((prev) => [...prev, error]);
+
+    const repoId = error.repoId;
+    if (typeof repoId !== "number") return;
+    if (!Number.isFinite(repoId)) return;
+
+    const completed = completedRepoIdsRef.current;
+    if (completed.has(repoId)) return;
+    completed.add(repoId);
+    setProgress((prev) => ({
+      ...prev,
+      completed: completed.size,
+    }));
+  }, []);
+
+  const { startStream, cancelStream } = useAIStream({
+    onResult: handleStreamResult,
+    onError: handleStreamError,
+  });
+
+  // 组件卸载时中止流，避免泄露未完成的请求
   useEffect(() => {
-    return () => clearProgressInterval();
-  }, [clearProgressInterval]);
+    return () => cancelStream();
+  }, [cancelStream]);
 
   const analyzeRepos = useCallback(
     async (
@@ -89,110 +136,129 @@ export function useAIAnalysis() {
         return [];
       }
 
-      // Reset control refs
+      // 初始化本轮分析状态
       pausedRef.current = false;
       cancelledRef.current = false;
       setIsPaused(false);
-      clearProgressInterval();
-
-      setProgress({ total: repos.length, completed: 0, status: "analyzing" });
+      completedRepoIdsRef.current = new Set();
+      suggestionsRef.current = [];
+      cacheContextHashRef.current = buildAIAnalysisContextHash({
+        provider: {
+          baseUrl: provider.baseUrl,
+          model: provider.model,
+          requestFormat: provider.requestFormat,
+        },
+        depth,
+        systemPrompt,
+        userPrompt,
+        existingLists,
+        existingTags: existingTags.map((t) => ({ id: t.id, name: t.name })),
+      });
+      setErrors([]);
+      setProgress({
+        total: repos.length,
+        completed: 0,
+        status: "analyzing",
+      });
       setSuggestions([]);
 
-      const allSuggestions: RepoSuggestion[] = [];
-      const batchSize = getBatchSize(depth);
-      const batches = Math.ceil(repos.length / batchSize);
+      // 先从缓存中填充已分析结果，减少重复调用
+      const contextHash = cacheContextHashRef.current;
+      if (contextHash) {
+        const cachedSuggestions = repos
+          .map((repo) => getCachedSuggestion(contextHash, repo.id))
+          .filter(Boolean) as RepoSuggestion[];
 
-      try {
-        for (let i = 0; i < batches; i++) {
-          // Check if cancelled
-          if (cancelledRef.current) {
-            setProgress((prev) => ({ ...prev, status: "idle" }));
-            return allSuggestions;
-          }
-
-          // Wait while paused
-          while (pausedRef.current) {
-            await new Promise((resolve) => setTimeout(resolve, 200));
-            if (cancelledRef.current) {
-              setProgress((prev) => ({ ...prev, status: "idle" }));
-              return allSuggestions;
-            }
-          }
-
-          const batchStart = i * batchSize;
-          const batchEnd = Math.min((i + 1) * batchSize, repos.length);
-          const batchRepos = repos.slice(batchStart, batchEnd);
-
-          // 启动模拟进度：在 API 调用期间逐渐增加进度
-          let simulatedProgress = batchStart;
-          clearProgressInterval();
-          progressIntervalRef.current = window.setInterval(() => {
-            // 最多模拟到 batchEnd - 1，留一个给真实完成
-            if (simulatedProgress < batchEnd - 1 && !pausedRef.current) {
-              simulatedProgress++;
-              setProgress((prev) => ({
-                ...prev,
-                completed: simulatedProgress,
-              }));
-            }
-          }, PROGRESS_INTERVAL_MS);
-
-          const request: AnalyzeRequest = {
-            repos: batchRepos.map((repo) => ({
-              id: repo.id,
-              name: repo.name,
-              full_name: repo.full_name,
-              description: repo.description,
-              language: repo.language,
-              topics: repo.topics,
-            })),
-            existingLists,
-            existingTags: existingTags.map((t) => ({ id: t.id, name: t.name })),
-            provider,
-            depth,
-            systemPrompt,
-            userPrompt,
-          };
-
-          const data = await postJson<{
-            suggestions?: RepoSuggestionPayload[];
-          }>("/api/analyze-repos", request);
-          clearProgressInterval();
-
-          if (data?.suggestions) {
-            const batchSuggestions: RepoSuggestion[] = data.suggestions.map(
-              (s) => ({
-                ...s,
-                repoName:
-                  batchRepos.find((r) => r.id === s.repoId)?.full_name || "",
-              }),
-            );
-            allSuggestions.push(...batchSuggestions);
-            setSuggestions((prev) => [...prev, ...batchSuggestions]);
-          }
-
-          // 设置真实完成进度
+        if (cachedSuggestions.length > 0) {
+          completedRepoIdsRef.current = new Set(
+            cachedSuggestions.map((s) => s.repoId),
+          );
+          suggestionsRef.current = cachedSuggestions;
+          setSuggestions(cachedSuggestions);
           setProgress((prev) => ({
             ...prev,
-            completed: batchEnd,
+            completed: cachedSuggestions.length,
           }));
         }
+      }
 
-        setProgress((prev) => ({ ...prev, status: "completed" }));
-        return allSuggestions;
-      } catch (error) {
-        clearProgressInterval();
-        const errorMessage =
-          error instanceof Error ? error.message : "分析失败";
+      try {
+        while (true) {
+          if (cancelledRef.current) {
+            throw new CancelledError();
+          }
+
+          while (pausedRef.current) {
+            await delay(200);
+            if (cancelledRef.current) {
+              throw new CancelledError();
+            }
+          }
+
+          const remaining = repos.filter(
+            (r) => !completedRepoIdsRef.current.has(r.id),
+          );
+
+          if (remaining.length === 0) {
+            break;
+          }
+
+          try {
+            await startStream({
+              repos: remaining.map((repo) => ({
+                id: repo.id,
+                name: repo.name,
+                full_name: repo.full_name,
+                description: repo.description,
+                language: repo.language,
+                topics: repo.topics,
+              })),
+              existingLists,
+              existingTags: existingTags.map((t) => ({
+                id: t.id,
+                name: t.name,
+              })),
+              provider,
+              depth,
+              systemPrompt,
+              userPrompt,
+            });
+          } catch (error) {
+            // 暂停/取消：startStream 会因为 AbortError 中断
+            if (isAbortError(error)) {
+              if (cancelledRef.current) {
+                throw new CancelledError();
+              }
+              continue;
+            }
+
+            const errorMessage =
+              error instanceof Error ? error.message : "分析失败";
+            setProgress((prev) => ({
+              ...prev,
+              status: "error",
+              error: errorMessage,
+            }));
+            throw error;
+          }
+        }
+
         setProgress((prev) => ({
           ...prev,
-          status: "error",
-          error: errorMessage,
+          completed: prev.total,
+          status: "completed",
         }));
+
+        return suggestionsRef.current;
+      } catch (error) {
+        if (error instanceof CancelledError) {
+          // 取消由 cancelAnalysis / resetAnalysis 负责更新 UI 状态
+          throw error;
+        }
         throw error;
       }
     },
-    [clearProgressInterval],
+    [startStream],
   );
 
   const analyzeSingleRepo = useCallback(
@@ -223,7 +289,8 @@ export function useAIAnalysis() {
     pausedRef.current = true;
     setIsPaused(true);
     setProgress((prev) => ({ ...prev, status: "paused" }));
-  }, []);
+    cancelStream();
+  }, [cancelStream]);
 
   const resumeAnalysis = useCallback(() => {
     pausedRef.current = false;
@@ -232,22 +299,38 @@ export function useAIAnalysis() {
   }, []);
 
   const resetAnalysis = useCallback(() => {
-    clearProgressInterval();
     cancelledRef.current = true;
     pausedRef.current = false;
     setIsPaused(false);
+    cancelStream();
+
+    completedRepoIdsRef.current = new Set();
+    suggestionsRef.current = [];
+    cacheContextHashRef.current = null;
+
     setProgress({ total: 0, completed: 0, status: "idle" });
     setSuggestions([]);
-  }, [clearProgressInterval]);
+    setErrors([]);
+  }, [cancelStream]);
+
+  const cancelAnalysis = useCallback(() => {
+    cancelledRef.current = true;
+    pausedRef.current = false;
+    setIsPaused(false);
+    cancelStream();
+    setProgress((prev) => ({ ...prev, status: "idle" }));
+  }, [cancelStream]);
 
   return {
     progress,
     suggestions,
     isPaused,
+    errors,
     analyzeRepos,
     analyzeSingleRepo,
     pauseAnalysis,
     resumeAnalysis,
+    cancelAnalysis,
     resetAnalysis,
   };
 }

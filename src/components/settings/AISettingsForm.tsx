@@ -33,6 +33,8 @@ import {
 } from "@/hooks/useAISettings";
 import { getDefaultSystemPrompt } from "@/lib/prompts";
 import { postJson } from "@/lib/api";
+import { clearAIAnalysisCache } from "@/lib/ai-analysis-cache";
+import { toast } from "sonner";
 
 interface AISettingsFormProps {
   settings: AISettings;
@@ -82,6 +84,11 @@ export function AISettingsForm({
       setTestStatus("error");
       setTestError(e instanceof Error ? e.message : "连接测试失败");
     }
+  };
+
+  const handleClearAnalysisCache = () => {
+    clearAIAnalysisCache();
+    toast.success("已清空 AI 分析缓存");
   };
 
   const isProviderConfigured =
@@ -353,6 +360,21 @@ export function AISettingsForm({
                     onUpdate({ autoCreateTags: checked })
                   }
                 />
+              </div>
+
+              <div className="pt-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={handleClearAnalysisCache}
+                >
+                  清空 AI 分析缓存
+                </Button>
+                <p className="mt-2 text-xs text-muted-foreground">
+                  缓存用于避免重复调用 AI（默认 24
+                  小时）。清空后下次分析会重新请求。
+                </p>
               </div>
             </div>
           </>
