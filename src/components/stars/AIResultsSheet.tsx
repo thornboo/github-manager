@@ -10,7 +10,8 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Card, CardContent } from "@/components/ui/card";
-import { Check, Trash2, FileText, ClipboardCopy } from "lucide-react";
+import { Progress } from "@/components/ui/progress";
+import { Check, Trash2, FileText, ClipboardCopy, Loader2 } from "lucide-react";
 import type { RepoSuggestion } from "@/types/ai";
 import { toast } from "sonner";
 
@@ -125,6 +126,8 @@ interface AIResultsSheetProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   suggestions: RepoSuggestion[];
+  isAnalyzing?: boolean;
+  progress?: { completed: number; total: number };
   onApply: (suggestion: RepoSuggestion) => void;
   onApplyAll: () => void;
   onClear: () => void;
@@ -137,6 +140,8 @@ export const AIResultsSheet = forwardRef<HTMLDivElement, AIResultsSheetProps>(
       open,
       onOpenChange,
       suggestions,
+      isAnalyzing = false,
+      progress,
       onApply,
       onApplyAll,
       onClear,
@@ -144,20 +149,45 @@ export const AIResultsSheet = forwardRef<HTMLDivElement, AIResultsSheetProps>(
     },
     _ref,
   ) {
-    if (suggestions.length === 0) {
+    if (suggestions.length === 0 && !isAnalyzing) {
       return null;
     }
+
+    const progressPercent =
+      progress && progress.total > 0
+        ? (progress.completed / progress.total) * 100
+        : 0;
 
     return (
       <Sheet open={open} onOpenChange={onOpenChange}>
         <SheetContent className="w-full sm:max-w-lg">
           <SheetHeader>
-            <SheetTitle>分析结果</SheetTitle>
+            <SheetTitle className="flex items-center gap-2">
+              分析结果
+              {isAnalyzing && (
+                <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+              )}
+            </SheetTitle>
             <SheetDescription>
-              已分析 {suggestions.length} 个仓库，点击应用将建议的
-              Lists、标签和备注应用到仓库
+              {isAnalyzing ? (
+                <>
+                  正在分析 {progress?.completed || 0}/{progress?.total || 0}{" "}
+                  个仓库...
+                </>
+              ) : (
+                <>
+                  已分析 {suggestions.length} 个仓库，点击应用将建议的
+                  Lists、标签和备注应用到仓库
+                </>
+              )}
             </SheetDescription>
           </SheetHeader>
+
+          {isAnalyzing && progress && progress.total > 0 && (
+            <div className="mt-3">
+              <Progress value={progressPercent} className="h-2" />
+            </div>
+          )}
 
           <div className="flex gap-2 mt-4 mb-4">
             <Button size="sm" onClick={onApplyAll} className="flex-1">

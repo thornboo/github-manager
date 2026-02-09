@@ -340,6 +340,11 @@ export function StarsDashboard({
         open={ai.showResults}
         onOpenChange={ai.setShowResults}
         suggestions={ai.suggestions}
+        isAnalyzing={ai.progress.status === "analyzing"}
+        progress={{
+          completed: ai.progress.completed,
+          total: ai.progress.total,
+        }}
         onApply={ai.applySuggestion}
         onApplyAll={ai.applyAll}
         onClear={ai.clearSuggestions}
