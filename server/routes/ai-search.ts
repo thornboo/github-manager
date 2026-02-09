@@ -52,12 +52,14 @@ export default async function aiSearch(
       const parts: string[] = [`[ID: ${repo.id}] ${repo.full_name}`];
       if (repo.description) parts.push(`描述: ${repo.description}`);
       if (repo.language) parts.push(`语言: ${repo.language}`);
-      if (repo.topics.length > 0) parts.push(`Topics: ${repo.topics.join(", ")}`);
+      if (repo.topics.length > 0)
+        parts.push(`Topics: ${repo.topics.join(", ")}`);
       if (repo.localTags.length > 0) {
         parts.push(`用户标签: ${repo.localTags.join(", ")}`);
       }
       if (repo.note) parts.push(`用户备注: ${repo.note}`);
-      if (repo.lists.length > 0) parts.push(`所属列表: ${repo.lists.join(", ")}`);
+      if (repo.lists.length > 0)
+        parts.push(`所属列表: ${repo.lists.join(", ")}`);
       return parts.join(" | ");
     })
     .join("\n");
@@ -141,9 +143,9 @@ export default async function aiSearch(
     return;
   }
 
-  const aiResponse = (await safeReadJson<unknown>(response)) as
-    | OpenAIResponse
-    | null;
+  const aiResponse = (await safeReadJson<unknown>(
+    response,
+  )) as OpenAIResponse | null;
 
   const toolCall = aiResponse?.choices?.[0]?.message?.tool_calls?.[0];
   if (toolCall && toolCall.function?.name === "return_search_results") {

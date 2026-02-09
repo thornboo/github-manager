@@ -28,9 +28,7 @@ export default async function testAiConnection(
   const { baseUrl, apiKey, model } = body;
 
   if (!baseUrl || !apiKey) {
-    res
-      .status(400)
-      .json({ success: false, error: "缺少 Base URL 或 API Key" });
+    res.status(400).json({ success: false, error: "缺少 Base URL 或 API Key" });
     return;
   }
 

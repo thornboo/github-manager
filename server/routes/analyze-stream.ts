@@ -203,7 +203,12 @@ async function analyzeRepoOnce(
   }
 
   const endpoint = normalizeChatCompletionsEndpoint(provider.baseUrl);
-  const prompt = buildSingleRepoPrompt(repo, existingLists, existingTags, depth);
+  const prompt = buildSingleRepoPrompt(
+    repo,
+    existingLists,
+    existingTags,
+    depth,
+  );
 
   let response: globalThis.Response;
   try {
@@ -327,9 +332,9 @@ async function analyzeRepoOnce(
     });
   }
 
-  const aiResponse = (await safeReadJson<unknown>(response)) as
-    | OpenAIResponse
-    | null;
+  const aiResponse = (await safeReadJson<unknown>(
+    response,
+  )) as OpenAIResponse | null;
   try {
     return parseSuggestion(aiResponse);
   } catch (error) {

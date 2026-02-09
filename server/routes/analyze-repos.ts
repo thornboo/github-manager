@@ -287,9 +287,9 @@ export default async function analyzeRepos(
     return;
   }
 
-  const aiResponse = (await safeReadJson<unknown>(response)) as
-    | OpenAIResponse
-    | null;
+  const aiResponse = (await safeReadJson<unknown>(
+    response,
+  )) as OpenAIResponse | null;
   console.log("[analyze-repos] upstream ok", {
     requestId,
     upstreamDurationMs,
