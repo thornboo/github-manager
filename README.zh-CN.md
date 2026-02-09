@@ -129,7 +129,8 @@ pnpm dev
 # → http://localhost:8081
 
 # 完整联调（含 AI API）
-npm i -g vercel && vercel dev
+pnpm add -g vercel  # 全局安装 Vercel CLI
+vercel dev          # 启动本地开发服务器（含 Serverless Functions）
 ```
 
 ---

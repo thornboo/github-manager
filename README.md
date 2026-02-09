@@ -129,7 +129,8 @@ pnpm dev
 # → http://localhost:8081
 
 # Full stack (with AI API)
-npm i -g vercel && vercel dev
+pnpm add -g vercel  # Install Vercel CLI globally
+vercel dev          # Start local dev server with serverless functions
 ```
 
 ---
