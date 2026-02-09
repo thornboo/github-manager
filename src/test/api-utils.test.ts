@@ -3,7 +3,7 @@ import {
   buildCorsHeaders,
   rejectDisallowedOrigin,
   validateProviderBaseUrl,
-} from "../../api/_utils";
+} from "../../server/utils";
 
 type RuntimeProcess = {
   env: Record<string, string | undefined>;

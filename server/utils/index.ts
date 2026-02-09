@@ -4,14 +4,15 @@ interface CorsOptions {
   extraHeaders?: Record<string, string>;
 }
 
+export interface RequestLike {
+  headers?: unknown;
+  url?: string;
+  protocol?: string;
+  get?: (name: string) => string | undefined;
+}
+
 const DEFAULT_ALLOW_HEADERS = "authorization, content-type";
 const DEFAULT_ALLOW_METHODS = "POST, OPTIONS";
-
-const LEGACY_CORS_HEADERS: Record<string, string> = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": DEFAULT_ALLOW_HEADERS,
-  "Access-Control-Allow-Methods": DEFAULT_ALLOW_METHODS,
-};
 
 function readRuntimeEnv(name: string): string | undefined {
   const maybeProcess = globalThis as typeof globalThis & {
@@ -47,21 +48,59 @@ function getConfiguredAllowedOrigins(): Set<string> {
   return new Set(entries);
 }
 
-function resolveRequestOrigin(request: Request): string | null {
-  const origin = request.headers.get("origin");
+function readHeaderValue(headers: unknown, key: string): string | null {
+  if (!headers) return null;
+
+  const lowerKey = key.toLowerCase();
+
+  if (
+    typeof headers === "object" &&
+    headers !== null &&
+    "get" in headers &&
+    typeof (headers as { get?: unknown }).get === "function"
+  ) {
+    const getter = (headers as { get(name: string): string | null }).get;
+    return getter.call(headers, lowerKey) ?? getter.call(headers, key) ?? null;
+  }
+
+  if (typeof headers === "object") {
+    const record = headers as Record<string, unknown>;
+    const value = record[lowerKey] ?? record[key];
+    if (typeof value === "string") return value;
+    if (Array.isArray(value) && typeof value[0] === "string") {
+      return value[0];
+    }
+  }
+
+  return null;
+}
+
+function resolveRequestOrigin(request: RequestLike): string | null {
+  const origin = readHeaderValue(request.headers, "origin");
   if (!origin) return null;
   return parseOrigin(origin);
 }
 
-function resolveRequestUrlOrigin(request: Request): string | null {
-  try {
-    return new URL(request.url).origin;
-  } catch {
-    return null;
+function resolveRequestUrlOrigin(request: RequestLike): string | null {
+  if (request.url) {
+    const fromUrl = parseOrigin(request.url);
+    if (fromUrl) return fromUrl;
   }
+
+  const host =
+    (typeof request.get === "function" ? request.get("host") : null) ??
+    readHeaderValue(request.headers, "host");
+
+  const forwardedProto = readHeaderValue(request.headers, "x-forwarded-proto")
+    ?.split(",")[0]
+    ?.trim();
+  const protocol = request.protocol || forwardedProto;
+
+  if (!host || !protocol) return null;
+  return parseOrigin(`${protocol}://${host}`);
 }
 
-function resolveAllowedOrigin(request: Request): string | null {
+function resolveAllowedOrigin(request: RequestLike): string | null {
   const requestOrigin = resolveRequestOrigin(request);
   if (!requestOrigin) return null;
 
@@ -84,14 +123,14 @@ function resolveAllowedOrigin(request: Request): string | null {
   return null;
 }
 
-export function isCorsOriginAllowed(request: Request): boolean {
-  const originHeader = request.headers.get("origin");
+export function isCorsOriginAllowed(request: RequestLike): boolean {
+  const originHeader = readHeaderValue(request.headers, "origin");
   if (!originHeader) return true;
   return resolveAllowedOrigin(request) !== null;
 }
 
 export function buildCorsHeaders(
-  request: Request,
+  request: RequestLike,
   options: CorsOptions = {},
 ): Record<string, string> {
   const headers: Record<string, string> = {
@@ -116,7 +155,7 @@ export function buildCorsHeaders(
   return headers;
 }
 
-export function rejectDisallowedOrigin(request: Request): Response | null {
+export function rejectDisallowedOrigin(request: RequestLike): Response | null {
   if (isCorsOriginAllowed(request)) return null;
 
   const headers = new Headers(buildCorsHeaders(request));
@@ -126,43 +165,6 @@ export function rejectDisallowedOrigin(request: Request): Response | null {
     status: 403,
     headers,
   });
-}
-
-export function okCors(request?: Request): Response {
-  if (request) {
-    const blocked = rejectDisallowedOrigin(request);
-    if (blocked) return blocked;
-    return new Response("ok", { headers: buildCorsHeaders(request) });
-  }
-
-  return new Response("ok", { headers: LEGACY_CORS_HEADERS });
-}
-
-export function json(
-  data: unknown,
-  init: ResponseInit = {},
-  request?: Request,
-): Response {
-  if (request) {
-    const blocked = rejectDisallowedOrigin(request);
-    if (blocked) return blocked;
-  }
-
-  const headers = new Headers(init.headers);
-  headers.set("Content-Type", "application/json");
-
-  if (request) {
-    const corsHeaders = buildCorsHeaders(request);
-    for (const [k, v] of Object.entries(corsHeaders)) {
-      if (!headers.has(k)) headers.set(k, v);
-    }
-  } else {
-    for (const [k, v] of Object.entries(LEGACY_CORS_HEADERS)) {
-      if (!headers.has(k)) headers.set(k, v);
-    }
-  }
-
-  return new Response(JSON.stringify(data), { ...init, headers });
 }
 
 function isLiteralIPv4(hostname: string): boolean {

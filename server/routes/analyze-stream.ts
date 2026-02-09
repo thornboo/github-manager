@@ -1,50 +1,23 @@
-import { getDefaultSystemPrompt } from "../src/lib/prompts";
+import type { Request, Response as ExpressResponse } from "express";
+import { getDefaultSystemPrompt } from "../../src/lib/prompts.js";
+import type {
+  AnalysisDepth,
+  NamedItem,
+  OpenAIResponse,
+  ProviderConfig,
+  RepoInput,
+} from "../types.js";
 import {
-  buildCorsHeaders,
   normalizeChatCompletionsEndpoint,
-  rejectDisallowedOrigin,
   safeReadJson,
   safeReadText,
   validateProviderBaseUrl,
-} from "./_utils";
-
-export const config = { runtime: "edge" };
-
-interface RepoInput {
-  id: number;
-  name: string;
-  full_name: string;
-  description: string | null;
-  language: string | null;
-  topics: string[];
-}
-
-interface ProviderConfig {
-  baseUrl: string;
-  apiKey: string;
-  model: string;
-  requestFormat: "openai" | "custom";
-}
-
-type AnalysisDepth = "quick" | "simple" | "deep";
-
-type OpenAIToolCall = {
-  function?: { name?: string; arguments?: string };
-};
-
-type OpenAIResponse = {
-  choices?: Array<{
-    message?: {
-      tool_calls?: OpenAIToolCall[];
-      content?: string;
-    };
-  }>;
-};
+} from "../utils/index.js";
 
 interface StreamRequest {
   repos: RepoInput[];
-  existingLists: Array<{ id: string; name: string }>;
-  existingTags: Array<{ id: string; name: string }>;
+  existingLists: NamedItem[];
+  existingTags: NamedItem[];
   provider: ProviderConfig;
   depth?: AnalysisDepth;
   systemPrompt?: string;
@@ -58,22 +31,6 @@ type SuggestionPayload = {
   summary: string;
   reasoning: string;
 };
-
-const SSE_BASE_HEADERS: Record<string, string> = {
-  "Content-Type": "text/event-stream",
-  "Cache-Control": "no-cache, no-transform",
-  Connection: "keep-alive",
-  // 禁用中间层缓冲（部分代理/网关会缓冲流式响应）
-  "X-Accel-Buffering": "no",
-};
-
-function buildSSEHeaders(request: Request): Record<string, string> {
-  return buildCorsHeaders(request, {
-    allowHeaders: "content-type",
-    allowMethods: "POST, OPTIONS",
-    extraHeaders: SSE_BASE_HEADERS,
-  });
-}
 
 class StreamAnalysisError extends Error {
   recoverable: boolean;
@@ -90,15 +47,9 @@ class StreamAnalysisError extends Error {
   }
 }
 
-function sendEvent(
-  controller: ReadableStreamDefaultController<Uint8Array>,
-  event: string,
-  data: unknown,
-): void {
-  const encoder = new TextEncoder();
-  controller.enqueue(
-    encoder.encode(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`),
-  );
+function sendEvent(res: ExpressResponse, event: string, data: unknown): void {
+  if (res.writableEnded || res.destroyed) return;
+  res.write(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`);
 }
 
 function getSystemPrompt(
@@ -129,17 +80,17 @@ function formatSingleRepoInfo(repo: RepoInput, depth: AnalysisDepth): string {
 
 function buildSingleRepoPrompt(
   repo: RepoInput,
-  existingLists: Array<{ id: string; name: string }>,
-  existingTags: Array<{ id: string; name: string }>,
+  existingLists: NamedItem[],
+  existingTags: NamedItem[],
   depth: AnalysisDepth,
 ): string {
   const listsInfo =
     (existingLists?.length || 0) > 0
-      ? existingLists.map((l) => l.name).join(", ")
+      ? existingLists.map((item) => item.name).join(", ")
       : "暂无 Lists";
   const tagsInfo =
     (existingTags?.length || 0) > 0
-      ? existingTags.map((t) => t.name).join(", ")
+      ? existingTags.map((item) => item.name).join(", ")
       : "暂无标签";
 
   return `请分析这个仓库并提供分类建议：\n\n仓库信息：\n${formatSingleRepoInfo(
@@ -149,7 +100,6 @@ function buildSingleRepoPrompt(
 }
 
 function getUpstreamTimeoutMs(depth: AnalysisDepth): number {
-  // 单仓库分析的超时保护：避免上游卡住导致流挂死
   switch (depth) {
     case "deep":
       return 60_000;
@@ -213,7 +163,6 @@ async function sleep(ms: number, signal?: AbortSignal): Promise<void> {
 }
 
 function parseSuggestion(aiResponse: OpenAIResponse | null): SuggestionPayload {
-  // 优先解析 OpenAI function calling / tool calls
   const toolCall = aiResponse?.choices?.[0]?.message?.tool_calls?.[0];
   if (toolCall && toolCall.function?.name === "provide_suggestion") {
     const parsed = JSON.parse(toolCall.function.arguments || "{}") as {
@@ -222,7 +171,6 @@ function parseSuggestion(aiResponse: OpenAIResponse | null): SuggestionPayload {
     if (parsed?.suggestion) return parsed.suggestion;
   }
 
-  // 兜底：从 message content 中提取 JSON
   const content = aiResponse?.choices?.[0]?.message?.content;
   if (typeof content === "string" && content) {
     const jsonMatch = content.match(/\{[\s\S]*"repoId"[\s\S]*\}/);
@@ -255,14 +203,9 @@ async function analyzeRepoOnce(
   }
 
   const endpoint = normalizeChatCompletionsEndpoint(provider.baseUrl);
-  const prompt = buildSingleRepoPrompt(
-    repo,
-    existingLists,
-    existingTags,
-    depth,
-  );
+  const prompt = buildSingleRepoPrompt(repo, existingLists, existingTags, depth);
 
-  let response: Response;
+  let response: globalThis.Response;
   try {
     response = await fetch(endpoint, {
       method: "POST",
@@ -384,9 +327,9 @@ async function analyzeRepoOnce(
     });
   }
 
-  const aiResponse = (await safeReadJson<unknown>(
-    response,
-  )) as OpenAIResponse | null;
+  const aiResponse = (await safeReadJson<unknown>(response)) as
+    | OpenAIResponse
+    | null;
   try {
     return parseSuggestion(aiResponse);
   } catch (error) {
@@ -438,7 +381,6 @@ async function analyzeRepoWithRetry(
       const hasMoreAttempts = attempt < maxRetries;
 
       if (!retryable || !hasMoreAttempts) {
-        // 达到最大重试次数后，部分“全局性错误”直接终止本次流，避免刷屏。
         if (
           lastError instanceof StreamAnalysisError &&
           (lastError.status === 429 ||
@@ -449,6 +391,7 @@ async function analyzeRepoWithRetry(
             status: lastError.status,
           });
         }
+
         throw lastError instanceof Error
           ? lastError
           : new StreamAnalysisError("AI 分析失败", { recoverable: true });
@@ -466,30 +409,21 @@ async function analyzeRepoWithRetry(
     : new StreamAnalysisError("AI 分析失败", { recoverable: true });
 }
 
-export default async function handler(req: Request): Promise<Response> {
-  const blocked = rejectDisallowedOrigin(req);
-  if (blocked) return blocked;
+function setSseHeaders(res: ExpressResponse): void {
+  res.setHeader("Content-Type", "text/event-stream");
+  res.setHeader("Cache-Control", "no-cache, no-transform");
+  res.setHeader("Connection", "keep-alive");
+  res.setHeader("X-Accel-Buffering", "no");
+}
 
-  // CORS preflight
-  if (req.method === "OPTIONS") {
-    return new Response(null, { headers: buildSSEHeaders(req) });
-  }
-
-  if (req.method !== "POST") {
-    return new Response("Method not allowed", {
-      status: 405,
-      headers: buildSSEHeaders(req),
-    });
-  }
-
-  let body: StreamRequest;
-  try {
-    body = (await req.json()) as StreamRequest;
-  } catch {
-    return new Response("Invalid JSON", {
-      status: 400,
-      headers: buildSSEHeaders(req),
-    });
+export default async function analyzeStream(
+  req: Request,
+  res: ExpressResponse,
+): Promise<void> {
+  const body = req.body as StreamRequest | undefined;
+  if (!body || typeof body !== "object") {
+    res.status(400).send("Invalid JSON");
+    return;
   }
 
   const {
@@ -503,25 +437,19 @@ export default async function handler(req: Request): Promise<Response> {
   } = body;
 
   if (!provider?.baseUrl || !provider?.apiKey) {
-    return new Response("Missing provider config", {
-      status: 400,
-      headers: buildSSEHeaders(req),
-    });
+    res.status(400).send("Missing provider config");
+    return;
   }
 
   const baseUrlValidation = validateProviderBaseUrl(provider.baseUrl);
   if (baseUrlValidation.valid === false) {
-    return new Response(baseUrlValidation.message, {
-      status: 400,
-      headers: buildSSEHeaders(req),
-    });
+    res.status(400).send(baseUrlValidation.message);
+    return;
   }
 
   if (!repos || repos.length === 0) {
-    return new Response("No repos to analyze", {
-      status: 400,
-      headers: buildSSEHeaders(req),
-    });
+    res.status(400).send("No repos to analyze");
+    return;
   }
 
   const normalizedProvider: ProviderConfig = {
@@ -531,107 +459,103 @@ export default async function handler(req: Request): Promise<Response> {
 
   const systemPrompt = getSystemPrompt(depth, customSystemPrompt, userPrompt);
 
-  // 用于同时响应：客户端断开/取消 + 单仓库超时
+  setSseHeaders(res);
+  if (typeof res.flushHeaders === "function") {
+    res.flushHeaders();
+  }
+
   const requestAbortController = new AbortController();
-  const onReqAbort = () => requestAbortController.abort();
+  const onReqClose = () => requestAbortController.abort();
+  req.on("close", onReqClose);
 
-  const stream = new ReadableStream<Uint8Array>({
-    async start(controller) {
-      let processed = 0;
-      let errors = 0;
+  let processed = 0;
+  let errors = 0;
 
-      req.signal.addEventListener("abort", onReqAbort);
+  try {
+    for (let idx = 0; idx < repos.length; idx += 1) {
+      if (requestAbortController.signal.aborted) break;
+
+      const repo = repos[idx];
+      if (!repo) continue;
+
+      sendEvent(res, "progress", {
+        type: "progress",
+        current: idx + 1,
+        total: repos.length,
+        repoId: repo.id,
+        repoName: repo.full_name,
+      });
 
       try {
-        for (let idx = 0; idx < repos.length; idx += 1) {
-          if (requestAbortController.signal.aborted) break;
+        const suggestion = await analyzeRepoWithRetry(
+          repo,
+          {
+            provider: normalizedProvider,
+            existingLists,
+            existingTags,
+            systemPrompt,
+            depth,
+          },
+          requestAbortController.signal,
+        );
 
-          const repo = repos[idx];
-          if (!repo) continue;
-
-          sendEvent(controller, "progress", {
-            type: "progress",
-            current: idx + 1,
-            total: repos.length,
-            repoId: repo.id,
-            repoName: repo.full_name,
-          });
-
-          try {
-            const suggestion = await analyzeRepoWithRetry(
-              repo,
-              {
-                provider: normalizedProvider,
-                existingLists,
-                existingTags,
-                systemPrompt,
-                depth,
-              },
-              requestAbortController.signal,
-            );
-
-            if (suggestion.repoId !== repo.id) {
-              throw new StreamAnalysisError(
-                `AI 返回的 repoId 不匹配（期望 ${repo.id}，实际 ${suggestion.repoId}）`,
-                { recoverable: true },
-              );
-            }
-
-            sendEvent(controller, "result", {
-              type: "result",
-              repoId: repo.id,
-              repoName: repo.full_name,
-              suggestion: {
-                recommendedLists: suggestion.recommendedLists || [],
-                suggestedTags: suggestion.suggestedTags || [],
-                summary: suggestion.summary || "",
-                reasoning: suggestion.reasoning || "",
-              },
-            });
-            processed += 1;
-          } catch (error) {
-            if (requestAbortController.signal.aborted) break;
-
-            errors += 1;
-            const recoverable =
-              error instanceof StreamAnalysisError ? error.recoverable : true;
-            sendEvent(controller, "error", {
-              type: "error",
-              repoId: repo.id,
-              repoName: repo.full_name,
-              message: error instanceof Error ? error.message : "Unknown error",
-              recoverable,
-            });
-
-            if (!recoverable) {
-              break;
-            }
-          }
+        if (suggestion.repoId !== repo.id) {
+          throw new StreamAnalysisError(
+            `AI 返回的 repoId 不匹配（期望 ${repo.id}，实际 ${suggestion.repoId}）`,
+            { recoverable: true },
+          );
         }
 
-        sendEvent(controller, "complete", {
-          type: "complete",
-          success: errors === 0,
-          totalProcessed: processed,
-          totalErrors: errors,
+        sendEvent(res, "result", {
+          type: "result",
+          repoId: repo.id,
+          repoName: repo.full_name,
+          suggestion: {
+            recommendedLists: suggestion.recommendedLists || [],
+            suggestedTags: suggestion.suggestedTags || [],
+            summary: suggestion.summary || "",
+            reasoning: suggestion.reasoning || "",
+          },
         });
+        processed += 1;
       } catch (error) {
-        if (!isAbortError(error)) {
-          sendEvent(controller, "error", {
-            type: "error",
-            message: error instanceof Error ? error.message : "Stream error",
-            recoverable: false,
-          });
-        }
-      } finally {
-        req.signal.removeEventListener("abort", onReqAbort);
-        controller.close();
-      }
-    },
-    cancel() {
-      requestAbortController.abort();
-    },
-  });
+        if (requestAbortController.signal.aborted) break;
 
-  return new Response(stream, { headers: buildSSEHeaders(req) });
+        errors += 1;
+        const recoverable =
+          error instanceof StreamAnalysisError ? error.recoverable : true;
+        sendEvent(res, "error", {
+          type: "error",
+          repoId: repo.id,
+          repoName: repo.full_name,
+          message: error instanceof Error ? error.message : "Unknown error",
+          recoverable,
+        });
+
+        if (!recoverable) {
+          break;
+        }
+      }
+    }
+
+    sendEvent(res, "complete", {
+      type: "complete",
+      success: errors === 0,
+      totalProcessed: processed,
+      totalErrors: errors,
+    });
+  } catch (error) {
+    if (!isAbortError(error)) {
+      sendEvent(res, "error", {
+        type: "error",
+        message: error instanceof Error ? error.message : "Stream error",
+        recoverable: false,
+      });
+    }
+  } finally {
+    req.off("close", onReqClose);
+    if (!res.writableEnded) {
+      res.end();
+    }
+  }
 }
