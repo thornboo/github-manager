@@ -16,7 +16,7 @@ import {
 } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { TrendingUp } from "lucide-react";
-import { StarTrendData } from "@/hooks/useDashboardStats";
+import { StarTrendData } from "@/hooks/business/useDashboardStats";
 
 interface StarTrendChartProps {
   data: StarTrendData[];

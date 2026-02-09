@@ -26,12 +26,7 @@ import {
   EyeOff,
   RotateCcw,
 } from "lucide-react";
-import {
-  AISettings,
-  AIProviderConfig,
-  AnalysisDepth,
-} from "@/hooks/useAISettings";
-import { getDefaultSystemPrompt } from "@/lib/prompts";
+import { AISettings, AIProviderConfig } from "@/hooks/state/useAISettings";
 import { postJson } from "@/lib/api";
 import { clearAIAnalysisCache } from "@/lib/ai-analysis-cache";
 import { toast } from "sonner";
@@ -93,10 +88,13 @@ export function AISettingsForm({
 
   const isProviderConfigured =
     settings.provider.baseUrl && settings.provider.apiKey;
-  const defaultSystemPrompt = getDefaultSystemPrompt(
-    settings.analysisDepth as AnalysisDepth,
-  );
   const isUsingDefaultSystemPrompt = !settings.systemPrompt.trim();
+  const depthLabel =
+    settings.analysisDepth === "quick"
+      ? "快速"
+      : settings.analysisDepth === "deep"
+        ? "深度"
+        : "简单";
 
   return (
     <Card id="ai" className="scroll-mt-20">
@@ -206,14 +204,14 @@ export function AISettingsForm({
                     <SelectValue placeholder="选择请求格式" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="openai">OpenAI 兼容格式</SelectItem>
+                    <SelectItem value="openai">OpenAI 标准格式</SelectItem>
                     <SelectItem value="custom">
                       自定义格式（暂不支持）
                     </SelectItem>
                   </SelectContent>
                 </Select>
                 <p className="text-xs text-muted-foreground">
-                  大多数 AI 服务商都支持 OpenAI 兼容格式
+                  大多数 AI 服务商都支持 OpenAI 标准格式
                 </p>
               </div>
 
@@ -267,18 +265,19 @@ export function AISettingsForm({
                     className="h-7 px-2 text-xs"
                   >
                     <RotateCcw className="h-3 w-3 mr-1" />
-                    恢复默认
+                    清空自定义
                   </Button>
                 </div>
                 <Textarea
                   id="system-prompt"
-                  value={settings.systemPrompt || defaultSystemPrompt}
+                  value={settings.systemPrompt}
                   onChange={(e) => onUpdate({ systemPrompt: e.target.value })}
                   className="min-h-[200px] font-mono text-sm"
-                  placeholder={defaultSystemPrompt}
+                  placeholder={`留空使用服务端内置${depthLabel}系统提示词`}
                 />
                 <p className="text-xs text-muted-foreground">
-                  定义 AI 的角色和行为规范。留空或点击"恢复默认"使用内置提示词。
+                  定义 AI
+                  的角色和行为规范。留空或点击"清空自定义"后使用服务端内置提示词。
                   {!isUsingDefaultSystemPrompt && (
                     <span className="text-amber-600 ml-1">（已自定义）</span>
                   )}

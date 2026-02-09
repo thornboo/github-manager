@@ -8,7 +8,7 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { DashboardStats } from "@/hooks/useDashboardStats";
+import { DashboardStats } from "@/hooks/business/useDashboardStats";
 
 interface OverviewCardsProps {
   stats: DashboardStats;

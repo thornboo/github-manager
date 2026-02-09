@@ -6,9 +6,9 @@ import { SyncSettingsForm } from "@/components/settings/SyncSettingsForm";
 import { AISettingsForm } from "@/components/settings/AISettingsForm";
 import { DataBackupSection } from "@/components/settings/DataBackupSection";
 import { SettingsNav } from "@/components/settings/SettingsNav";
-import { useSyncSettings } from "@/hooks/useSyncSettings";
-import { useAISettings } from "@/hooks/useAISettings";
-import { LocalDataProvider } from "@/contexts/LocalDataContext";
+import { useSyncSettings } from "@/hooks/state/useSyncSettings";
+import { useAISettings } from "@/hooks/state/useAISettings";
+import { LocalDataProvider } from "@/contexts/LocalDataProvider";
 import { useAuth } from "@/contexts/AuthContext";
 import { LoginPage } from "@/components/auth/LoginPage";
 
@@ -26,7 +26,6 @@ function SettingsContent() {
   const [activeSection, setActiveSection] = useState("sync");
   const mainRef = useRef<HTMLDivElement>(null);
 
-  // 使用 IntersectionObserver 监听滚动
   useEffect(() => {
     const sectionIds = [
       "sync",
@@ -74,7 +73,6 @@ function SettingsContent() {
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Header */}
       <header className="sticky top-0 z-50 w-full border-b bg-card">
         <div className="flex h-14 items-center px-4 gap-4">
           <Button variant="ghost" size="icon" asChild>
@@ -86,10 +84,8 @@ function SettingsContent() {
         </div>
       </header>
 
-      {/* Content */}
       <div className="container max-w-5xl py-6">
         <div className="flex gap-8">
-          {/* 左侧导航 - 桌面端显示 */}
           <aside className="hidden md:block w-48 shrink-0">
             <nav className="sticky top-20">
               <SettingsNav
@@ -99,7 +95,6 @@ function SettingsContent() {
             </nav>
           </aside>
 
-          {/* 右侧内容 */}
           <main ref={mainRef} className="flex-1 space-y-6">
             <SyncSettingsForm
               settings={syncSettings}

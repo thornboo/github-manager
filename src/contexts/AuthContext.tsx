@@ -6,9 +6,11 @@ import {
   useCallback,
   ReactNode,
 } from "react";
-import { GitHubUser, AuthState } from "@/types/github";
+import { GitHubUser } from "@/types/github";
+import { AuthState } from "@/types/ui";
 import { STORAGE_KEYS } from "@/lib/constants";
 import { GitHubApiClient, GitHubApiError } from "@/lib/github-api";
+import { fetchWithGraphQLFallback, isGraphQLEnabled } from "@/lib/graphql-mode";
 import { VIEWER_QUERY } from "@/lib/graphql/queries";
 
 interface AuthContextType extends AuthState {
@@ -22,9 +24,6 @@ interface StoredAuth {
   accessToken: string;
   user: GitHubUser;
 }
-
-// 默认启用 GraphQL；如需强制回退 REST，可设置 VITE_USE_GRAPHQL=false。
-const USE_GRAPHQL = import.meta.env.VITE_USE_GRAPHQL !== "false";
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<GitHubUser | null>(null);
@@ -120,15 +119,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         };
       };
 
-      const user: GitHubUser = !USE_GRAPHQL
-        ? await fetchUserByRest()
-        : await fetchUserByGraphQL().catch((e) => {
-            console.warn(
-              "GraphQL viewer fetch failed, falling back to REST:",
-              e,
-            );
-            return fetchUserByRest();
-          });
+      const user = await fetchWithGraphQLFallback({
+        fetchRest: fetchUserByRest,
+        fetchGraphQL: fetchUserByGraphQL,
+        fallbackMessage: "GraphQL viewer fetch failed, falling back to REST:",
+        useGraphQL: isGraphQLEnabled,
+      });
 
       setAccessToken(token);
       setUser(user);

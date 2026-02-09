@@ -8,7 +8,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { SyncSettings } from "@/hooks/useSyncSettings";
+import { SyncSettings } from "@/hooks/state/useSyncSettings";
 
 interface SyncSettingsFormProps {
   settings: SyncSettings;

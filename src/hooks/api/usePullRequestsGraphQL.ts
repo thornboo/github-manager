@@ -1,6 +1,10 @@
 import { GitHubApiClient } from "@/lib/github-api";
 import { SEARCH_PULL_REQUESTS_QUERY } from "@/lib/graphql/queries";
 import { transformPullRequest } from "@/lib/graphql/transformers";
+import {
+  type CreatedInvolved,
+  fetchCreatedInvolved,
+} from "@/hooks/api/created-involved";
 import type { GitHubPullRequest } from "@/types/github";
 import type {
   GraphQLPullRequest,
@@ -27,15 +31,12 @@ async function fetchPRsByQueryGraphQL(
 export async function fetchAllPRsGraphQL(
   token: string,
   username: string,
-): Promise<{ created: GitHubPullRequest[]; involved: GitHubPullRequest[] }> {
+): Promise<CreatedInvolved<GitHubPullRequest>> {
   const client = new GitHubApiClient(token);
-  const [created, involved] = await Promise.all([
-    fetchPRsByQueryGraphQL(client, `author:${username} type:pr`),
-    fetchPRsByQueryGraphQL(
-      client,
-      `involves:${username} type:pr -author:${username}`,
-    ),
-  ]);
 
-  return { created, involved };
+  return fetchCreatedInvolved(
+    (query) => fetchPRsByQueryGraphQL(client, query),
+    username,
+    "pr",
+  );
 }

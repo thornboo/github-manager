@@ -10,11 +10,6 @@ export interface SearchMatch {
   reason: string;
 }
 
-export interface AISearchResult {
-  matches: SearchMatch[];
-  error?: string;
-}
-
 export function useAISearch() {
   const [isSearching, setIsSearching] = useState(false);
   const [searchResults, setSearchResults] = useState<SearchMatch[] | null>(
@@ -40,7 +35,6 @@ export function useAISearch() {
       setSearchError(null);
 
       try {
-        // Prepare repos data with local metadata
         const reposWithMeta = repos.map((repo) => {
           const meta = repoMeta[repo.id];
           const localTagNames =

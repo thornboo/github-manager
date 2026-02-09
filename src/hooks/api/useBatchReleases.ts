@@ -1,11 +1,9 @@
 import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/contexts/AuthContext";
+import { fetchWithGraphQLFallback, isGraphQLEnabled } from "@/lib/graphql-mode";
 import { GitHubApiClient, GitHubApiError } from "@/lib/github-api";
 import type { ReleaseSubscription } from "@/types/local";
 import type { GitHubRelease } from "@/types/github";
-
-// 默认启用 GraphQL；如需强制回退 REST，可设置 VITE_USE_GRAPHQL=false。
-const USE_GRAPHQL = import.meta.env.VITE_USE_GRAPHQL !== "false";
 
 function buildBatchReleasesQuery(repos: string[]): string {
   const repoQueries = repos
@@ -57,19 +55,13 @@ async function fetchBatchReleases(
   token: string,
   subscriptions: ReleaseSubscription[],
 ): Promise<Map<string, LatestRelease>> {
-  if (!USE_GRAPHQL) {
-    return fetchBatchReleasesRest(token, subscriptions);
-  }
-
-  try {
-    return await fetchBatchReleasesGraphQL(token, subscriptions);
-  } catch (e) {
-    console.warn(
+  return fetchWithGraphQLFallback({
+    fetchRest: () => fetchBatchReleasesRest(token, subscriptions),
+    fetchGraphQL: () => fetchBatchReleasesGraphQL(token, subscriptions),
+    fallbackMessage:
       "GraphQL batch releases fetch failed, falling back to REST:",
-      e,
-    );
-    return fetchBatchReleasesRest(token, subscriptions);
-  }
+    useGraphQL: isGraphQLEnabled,
+  });
 }
 
 async function fetchBatchReleasesGraphQL(

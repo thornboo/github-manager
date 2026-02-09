@@ -1,8 +1,8 @@
 import { useCallback, useState } from "react";
 import { toast } from "sonner";
-import { useAIAnalysis } from "@/hooks/useAIAnalysis";
-import { useAISearch } from "@/hooks/useAISearch";
-import { useAISettings } from "@/hooks/useAISettings";
+import { useAIAnalysis } from "@/hooks/business/useAIAnalysis";
+import { useAISearch } from "@/hooks/business/useAISearch";
+import { useAISettings } from "@/hooks/state/useAISettings";
 import type { AnalysisDepth, AnalysisScope, RepoSuggestion } from "@/types/ai";
 import type { StarList, StarredRepo } from "@/types/github";
 import type { RepoMeta, RepoTag } from "@/types/local";

@@ -1,7 +1,6 @@
-// Built-in system prompts for AI analysis
-// This file contains the same prompts used in the Edge Function, displayed for user transparency
+import type { AnalysisDepth } from "../types.js";
 
-export const ANALYSIS_BASE_PROMPT = `# 角色定义
+const ANALYSIS_BASE_PROMPT = `# 角色定义
 
 你是一名为顶级科技公司服务的 **首席技术知识官 (Chief Knowledge Officer)** 兼 **资深架构师**。
 
@@ -106,7 +105,7 @@ export const ANALYSIS_BASE_PROMPT = `# 角色定义
 - 中文优先，除非是专有名词（React, Docker 等）
 - 为新标签提供柔和的十六进制颜色代码`;
 
-export const ANALYSIS_DEPTH_PROMPTS = {
+const ANALYSIS_DEPTH_PROMPTS: Record<AnalysisDepth, string> = {
   quick: `【快速分析模式】
 - 仅关注仓库名称和编程语言
 - 进行快速、基础的分类
@@ -131,16 +130,29 @@ export const ANALYSIS_DEPTH_PROMPTS = {
 - 识别仓库的独特价值和使用场景`,
 };
 
-export type AnalysisDepthType = keyof typeof ANALYSIS_DEPTH_PROMPTS;
-
-// Get the default system prompt for a given analysis depth
-export function getDefaultSystemPrompt(depth: AnalysisDepthType): string {
+export function getDefaultSystemPrompt(depth: AnalysisDepth): string {
   return `${ANALYSIS_BASE_PROMPT}
 
 ${ANALYSIS_DEPTH_PROMPTS[depth]}`;
 }
 
-// For backward compatibility
-export function getFullPromptPreview(depth: AnalysisDepthType): string {
-  return getDefaultSystemPrompt(depth);
+export function buildBatchAnalysisPrompt(params: {
+  reposInfo: string;
+  listsInfo: string;
+  tagsInfo: string;
+}): string {
+  const { reposInfo, listsInfo, tagsInfo } = params;
+
+  return `请分析以下仓库并提供分类建议：\n\n仓库列表：\n${reposInfo}\n\n现有 Lists: ${listsInfo}\n\n现有标签: ${tagsInfo}\n\n请用 JSON 格式返回，包含 "suggestions" 数组。每个建议应包含：\n- repoId: 仓库的数字 ID（使用上面 [ID: xxx] 中的数字，这是必须精确使用的值）\n- recommendedLists: 建议添加到的 Lists 名称数组\n- suggestedTags: 建议的标签数组，每个标签包含 { name, color (十六进制), isNew (boolean) }\n- summary: 仓库的中文总结（50-100字），概括核心功能、技术特点和适用场景\n- reasoning: 分类理由的简要说明\n\n重要：repoId 必须使用仓库前面 [ID: xxx] 中显示的精确数字 ID，不要使用索引！`;
+}
+
+export function buildSingleRepoAnalysisPrompt(params: {
+  repoInfo: string;
+  listsInfo: string;
+  tagsInfo: string;
+  repoId: number;
+}): string {
+  const { repoInfo, listsInfo, tagsInfo, repoId } = params;
+
+  return `请分析这个仓库并提供分类建议：\n\n仓库信息：\n${repoInfo}\n\n现有 Lists: ${listsInfo}\n\n现有标签: ${tagsInfo}\n\n请用 JSON 格式返回，包含字段：\n- repoId: 仓库的数字 ID（必须精确使用上面 [ID: xxx] 中的数字）\n- recommendedLists: 建议添加到的 Lists 名称数组\n- suggestedTags: 建议的标签数组，每个标签包含 { name, color (十六进制), isNew (boolean) }\n- summary: 仓库的中文总结（50-100字），概括核心功能、技术特点和适用场景\n- reasoning: 分类理由的简要说明\n\n重要：repoId 必须使用 [ID: ${repoId}] 中的精确数字 ID，不要使用索引！`;
 }

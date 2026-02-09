@@ -73,22 +73,6 @@ export async function updateServiceWorker(): Promise<void> {
   await updateSWFunction?.();
 }
 
-export function cacheUrls(urls: string[]): void {
-  if (!navigator.serviceWorker.controller) return;
-  navigator.serviceWorker.controller.postMessage({
-    type: "CACHE_URLS",
-    payload: urls,
-  });
-}
-
-export function clearCache(cacheName: string): void {
-  if (!navigator.serviceWorker.controller) return;
-  navigator.serviceWorker.controller.postMessage({
-    type: "CLEAR_CACHE",
-    payload: cacheName,
-  });
-}
-
 export function isOnline(): boolean {
   return navigator.onLine;
 }

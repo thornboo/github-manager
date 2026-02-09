@@ -58,7 +58,7 @@ vi.mock("@/hooks/useAIStream", () => {
   };
 });
 
-import { useAIAnalysis } from "@/hooks/useAIAnalysis";
+import { useAIAnalysis } from "@/hooks/business/useAIAnalysis";
 
 describe("useAIAnalysis (cache)", () => {
   beforeEach(() => {

@@ -1,5 +1,4 @@
 import type { Request, Response as ExpressResponse } from "express";
-import { getDefaultSystemPrompt } from "../../src/lib/prompts.js";
 import type {
   AnalysisDepth,
   NamedItem,
@@ -13,6 +12,10 @@ import {
   safeReadText,
   validateProviderBaseUrl,
 } from "../utils/index.js";
+import {
+  buildSingleRepoAnalysisPrompt,
+  getDefaultSystemPrompt,
+} from "../prompts/analysis.js";
 
 interface StreamRequest {
   repos: RepoInput[];
@@ -93,10 +96,12 @@ function buildSingleRepoPrompt(
       ? existingTags.map((item) => item.name).join(", ")
       : "暂无标签";
 
-  return `请分析这个仓库并提供分类建议：\n\n仓库信息：\n${formatSingleRepoInfo(
-    repo,
-    depth,
-  )}\n\n现有 Lists: ${listsInfo}\n\n现有标签: ${tagsInfo}\n\n请用 JSON 格式返回，包含字段：\n- repoId: 仓库的数字 ID（必须精确使用上面 [ID: xxx] 中的数字）\n- recommendedLists: 建议添加到的 Lists 名称数组\n- suggestedTags: 建议的标签数组，每个标签包含 { name, color (十六进制), isNew (boolean) }\n- summary: 仓库的中文总结（50-100字），概括核心功能、技术特点和适用场景\n- reasoning: 分类理由的简要说明\n\n重要：repoId 必须使用 [ID: ${repo.id}] 中的精确数字 ID，不要使用索引！`;
+  return buildSingleRepoAnalysisPrompt({
+    repoInfo: formatSingleRepoInfo(repo, depth),
+    listsInfo,
+    tagsInfo,
+    repoId: repo.id,
+  });
 }
 
 function getUpstreamTimeoutMs(depth: AnalysisDepth): number {
@@ -470,8 +475,10 @@ export default async function analyzeStream(
   }
 
   const requestAbortController = new AbortController();
-  const onReqClose = () => requestAbortController.abort();
-  req.on("close", onReqClose);
+  const onClientDisconnect = () => requestAbortController.abort();
+
+  req.on("aborted", onClientDisconnect);
+  res.on("close", onClientDisconnect);
 
   let processed = 0;
   let errors = 0;
@@ -558,7 +565,8 @@ export default async function analyzeStream(
       });
     }
   } finally {
-    req.off("close", onReqClose);
+    req.off("aborted", onClientDisconnect);
+    res.off("close", onClientDisconnect);
     if (!res.writableEnded) {
       res.end();
     }

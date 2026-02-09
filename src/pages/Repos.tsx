@@ -6,7 +6,7 @@ import { Header } from "@/components/layout/Header";
 import { AppSidebar } from "@/components/layout/AppSidebar";
 import { StarsDashboard } from "@/components/stars/StarsDashboard";
 import { SkeletonLoading } from "@/components/common/SkeletonLoading";
-import { LocalDataProvider } from "@/contexts/LocalDataContext";
+import { LocalDataProvider } from "@/contexts/LocalDataProvider";
 import { Loader2, Menu } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
@@ -60,10 +60,8 @@ function AuthenticatedApp() {
           }
         />
         <div className="flex-1 flex overflow-hidden">
-          {/* Desktop sidebar */}
           <div className="hidden md:flex h-full">{sidebar}</div>
 
-          {/* Main content */}
           <main className="flex-1 p-6 overflow-hidden min-h-0">
             {showInitialSkeleton ? (
               <SkeletonLoading

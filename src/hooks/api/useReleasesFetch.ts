@@ -1,16 +1,10 @@
 import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/contexts/AuthContext";
-import {
-  GitHubRelease,
-  GitHubRepo,
-  ReleaseWithRepo,
-  ReleaseSubscription,
-} from "@/types/github";
+import { GitHubRelease, GitHubRepo } from "@/types/github";
+import { ReleaseWithRepo, ReleaseSubscription } from "@/types/local";
+import { fetchWithGraphQLFallback, isGraphQLEnabled } from "@/lib/graphql-mode";
 import { GitHubApiClient, GitHubApiError } from "@/lib/github-api";
 import { parseRepoFullName } from "@/lib/github-utils";
-
-// 默认启用 GraphQL；如需强制回退 REST，可设置 VITE_USE_GRAPHQL=false。
-const USE_GRAPHQL = import.meta.env.VITE_USE_GRAPHQL !== "false";
 
 async function fetchRepoReleases(
   client: GitHubApiClient,
@@ -236,20 +230,14 @@ export function useReleasesFetch(
       if (!accessToken) throw new Error("Missing access token");
       const client = new GitHubApiClient(accessToken);
 
-      if (!USE_GRAPHQL) {
-        return fetchAllSubscribedReleases(client, subscriptions, perRepo);
-      }
-
-      try {
-        return await fetchAllSubscribedReleasesGraphQL(
-          client,
-          subscriptions,
-          perRepo,
-        );
-      } catch (e) {
-        console.warn("GraphQL releases fetch failed, falling back to REST:", e);
-        return fetchAllSubscribedReleases(client, subscriptions, perRepo);
-      }
+      return fetchWithGraphQLFallback({
+        fetchRest: () =>
+          fetchAllSubscribedReleases(client, subscriptions, perRepo),
+        fetchGraphQL: () =>
+          fetchAllSubscribedReleasesGraphQL(client, subscriptions, perRepo),
+        fallbackMessage: "GraphQL releases fetch failed, falling back to REST:",
+        useGraphQL: isGraphQLEnabled,
+      });
     },
     enabled: isAuthenticated && !!accessToken && subscriptions.length > 0,
     staleTime: 5 * 60 * 1000, // 5 minutes
@@ -268,7 +256,7 @@ export function useVerifyRepo(repoFullName: string | null) {
       const client = new GitHubApiClient(accessToken!);
 
       try {
-        if (!USE_GRAPHQL) {
+        if (!isGraphQLEnabled) {
           return await client.rest<GitHubRepo>(`/repos/${repoFullName}`);
         }
 
@@ -343,7 +331,7 @@ export function useVerifyRepo(repoFullName: string | null) {
       } catch (e) {
         let finalError: unknown = e;
 
-        if (USE_GRAPHQL) {
+        if (isGraphQLEnabled) {
           console.warn("GraphQL repo verify failed, falling back to REST:", e);
           try {
             return await client.rest<GitHubRepo>(`/repos/${repoFullName}`);

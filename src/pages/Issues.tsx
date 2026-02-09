@@ -16,7 +16,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { IssueSource } from "@/hooks/useIssues";
+import { IssueSource } from "@/hooks/api/useIssues";
 import { useDebounce } from "@/hooks/useDebounce";
 
 type IssueFilter = "all" | "open" | "closed";

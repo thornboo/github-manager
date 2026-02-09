@@ -27,7 +27,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { useDataExport, useDataImport } from "@/hooks/useDataBackup";
+import { useDataExport, useDataImport } from "@/hooks/state/useDataBackup";
 import type { ImportMode } from "@/types/backup";
 
 export function DataBackupSection() {

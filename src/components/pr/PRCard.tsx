@@ -8,7 +8,7 @@ import {
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { GitHubPullRequest } from "@/types/github";
-import { getRepoNameFromUrl } from "@/hooks/usePullRequests";
+import { getRepoNameFromUrl } from "@/lib/github-utils";
 import { formatDistanceToNow } from "date-fns";
 import { zhCN } from "date-fns/locale";
 import { cn } from "@/lib/utils";

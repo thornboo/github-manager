@@ -1,7 +1,6 @@
 import express from "express";
 import { fileURLToPath } from "node:url";
 import corsMiddleware from "./middleware/cors.js";
-import analyzeReposRoute from "./routes/analyze-repos.js";
 import analyzeStreamRoute from "./routes/analyze-stream.js";
 import aiSearchRoute from "./routes/ai-search.js";
 import testAiConnectionRoute from "./routes/test-ai-connection.js";
@@ -12,7 +11,6 @@ app.set("trust proxy", true);
 app.use(express.json({ limit: "10mb" }));
 app.use(corsMiddleware);
 
-app.post("/api/analyze-repos", analyzeReposRoute);
 app.post("/api/analyze-stream", analyzeStreamRoute);
 app.post("/api/ai-search", aiSearchRoute);
 app.post("/api/test-ai-connection", testAiConnectionRoute);

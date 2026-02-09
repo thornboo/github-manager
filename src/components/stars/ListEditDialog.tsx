@@ -14,7 +14,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { ConfirmDialog } from "@/components/common/ConfirmDialog";
-import { useUpdateList, useDeleteList } from "@/hooks/useLists";
+import { useUpdateList, useDeleteList } from "@/hooks/api/useLists";
 import { StarList } from "@/types/github";
 
 interface ListEditDialogProps {

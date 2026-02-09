@@ -174,52 +174,6 @@ async function addRepoToList(
   await client.graphql(mutation, { listId, repoId: repoNodeId });
 }
 
-async function removeRepoFromList(
-  token: string,
-  listId: string,
-  repoId: number,
-  repoFullName?: string,
-): Promise<void> {
-  const client = new GitHubApiClient(token);
-  const getRepoNodeId = async (): Promise<string> => {
-    if (repoFullName && repoFullName.includes("/")) {
-      const { owner, repo } = parseRepoFullName(repoFullName);
-      if (owner && repo) {
-        const data = await client.graphql<{
-          repository: { id: string } | null;
-        }>(REPOSITORY_ID_QUERY, { owner, name: repo });
-
-        if (data.repository?.id) return data.repository.id;
-      }
-    }
-
-    const repoData = await client.rest<{ node_id: string }>(
-      `/repositories/${repoId}`,
-    );
-    return repoData.node_id;
-  };
-
-  const repoNodeId = await getRepoNodeId().catch(async (e) => {
-    console.warn("GraphQL repo id fetch failed, falling back to REST:", e);
-    const repoData = await client.rest<{ node_id: string }>(
-      `/repositories/${repoId}`,
-    );
-    return repoData.node_id;
-  });
-
-  const mutation = `
-    mutation($listId: ID!, $repoId: ID!) {
-      removeUserListItems(input: { listId: $listId, itemIds: [$repoId] }) {
-        list {
-          id
-        }
-      }
-    }
-  `;
-
-  await client.graphql(mutation, { listId, repoId: repoNodeId });
-}
-
 export function useLists() {
   const { accessToken, isAuthenticated } = useAuth();
 
@@ -275,27 +229,6 @@ export function useAddToList() {
       repoId: number;
       repoFullName?: string;
     }) => addRepoToList(accessToken!, listId, repoId, repoFullName),
-    onSuccess: (_, { listId }) => {
-      queryClient.invalidateQueries({ queryKey: ["lists"] });
-      queryClient.invalidateQueries({ queryKey: ["listStars", listId] });
-    },
-  });
-}
-
-export function useRemoveFromList() {
-  const { accessToken } = useAuth();
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: ({
-      listId,
-      repoId,
-      repoFullName,
-    }: {
-      listId: string;
-      repoId: number;
-      repoFullName?: string;
-    }) => removeRepoFromList(accessToken!, listId, repoId, repoFullName),
     onSuccess: (_, { listId }) => {
       queryClient.invalidateQueries({ queryKey: ["lists"] });
       queryClient.invalidateQueries({ queryKey: ["listStars", listId] });

@@ -33,16 +33,6 @@ export interface StarredRepo extends GitHubRepo {
   starred_at: string;
 }
 
-export interface GitHubList {
-  id: number;
-  name: string;
-  description: string | null;
-  is_public: boolean;
-  created_at: string;
-  updated_at: string;
-  items_count: number;
-}
-
 export interface StarList {
   id: string;
   name: string;
@@ -116,8 +106,3 @@ export interface GitHubIssue {
   }>;
   comments: number;
 }
-
-// 兼容旧导出路径：逐步迁移到 types/local、types/ui、types/ai
-export type { ReleaseSubscription, ReleaseWithRepo } from "./local";
-export type { AuthState, ViewMode, SortOption, SortDirection } from "./ui";
-export type { AIProviderConfig, AnalysisDepth, RepoSuggestion } from "./ai";

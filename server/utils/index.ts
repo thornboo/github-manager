@@ -115,7 +115,7 @@ function resolveAllowedOrigin(request: RequestLike): string | null {
     return requestOrigin;
   }
 
-  // 未配置白名单时，开发环境保持兼容；生产环境默认拒绝跨源。
+  // 未配置白名单时，开发环境允许跨源；生产环境默认拒绝跨源。
   if (configuredOrigins.size === 0 && !isProductionEnv()) {
     return "*";
   }
@@ -285,7 +285,7 @@ export function normalizeChatCompletionsEndpoint(baseUrl: string): string {
     endpoint = endpoint.slice(0, -1);
   }
 
-  // 兼容两种输入：
+  // 支持两种输入：
   // - https://api.openai.com
   // - https://api.openai.com/v1
   // 以及已经完整提供到 /chat/completions 的情况

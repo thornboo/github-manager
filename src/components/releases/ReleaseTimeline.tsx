@@ -1,4 +1,4 @@
-import { ReleaseWithRepo } from "@/types/github";
+import { ReleaseWithRepo } from "@/types/local";
 import { ReleaseCard } from "./ReleaseCard";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Package, Rss } from "lucide-react";

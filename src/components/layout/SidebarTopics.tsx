@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { Hash } from "lucide-react";
-import { useStars } from "@/hooks/useStars";
+import { useStars } from "@/hooks/api/useStars";
 import { cn } from "@/lib/utils";
 
 interface SidebarTopicsProps {

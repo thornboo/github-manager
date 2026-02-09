@@ -2,10 +2,6 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Definition of the design system. All colors, gradients, fonts, etc should be defined here. 
-All colors MUST be HSL.
-*/
-
 @layer base {
   :root {
     --background: 0 0% 100%;
@@ -38,26 +34,9 @@ All colors MUST be HSL.
 
     --radius: 0.75rem;
 
-    /* Glass card effect - light mode */
     --glass-bg: 0 0% 100% / 0.7;
     --glass-border: 0 0% 80% / 0.5;
     --glass-shadow: 0 0% 0% / 0.1;
-
-    --sidebar-background: 0 0% 98%;
-
-    --sidebar-foreground: 240 5.3% 26.1%;
-
-    --sidebar-primary: 240 5.9% 10%;
-
-    --sidebar-primary-foreground: 0 0% 98%;
-
-    --sidebar-accent: 240 4.8% 95.9%;
-
-    --sidebar-accent-foreground: 240 5.9% 10%;
-
-    --sidebar-border: 220 13% 91%;
-
-    --sidebar-ring: 217.2 91.2% 59.8%;
   }
 
   .dark {
@@ -88,16 +67,7 @@ All colors MUST be HSL.
     --border: 217.2 32.6% 25%;
     --input: 217.2 32.6% 17.5%;
     --ring: 212.7 26.8% 83.9%;
-    --sidebar-background: 240 5.9% 10%;
-    --sidebar-foreground: 240 4.8% 95.9%;
-    --sidebar-primary: 224.3 76.3% 48%;
-    --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 240 3.7% 15.9%;
-    --sidebar-accent-foreground: 240 4.8% 95.9%;
-    --sidebar-border: 240 3.7% 15.9%;
-    --sidebar-ring: 217.2 91.2% 59.8%;
 
-    /* Glass card effect */
     --glass-bg: 220 60% 12% / 0.6;
     --glass-border: 220 40% 40% / 0.3;
     --glass-shadow: 220 60% 5% / 0.4;
@@ -115,24 +85,6 @@ All colors MUST be HSL.
 }
 
 @layer components {
-  /* Gradient mesh background */
-  .bg-gradient-mesh {
-    background-color: hsl(var(--background));
-    background-image:
-      radial-gradient(at 20% 20%, hsl(210 100% 95%) 0px, transparent 50%),
-      radial-gradient(at 80% 30%, hsl(190 100% 95%) 0px, transparent 50%),
-      radial-gradient(at 40% 80%, hsl(260 100% 96%) 0px, transparent 50%);
-  }
-
-  .dark .bg-gradient-mesh {
-    background-color: hsl(var(--background));
-    background-image:
-      radial-gradient(at 20% 20%, hsl(220 80% 15% / 0.5) 0px, transparent 50%),
-      radial-gradient(at 80% 30%, hsl(200 80% 12% / 0.5) 0px, transparent 50%),
-      radial-gradient(at 40% 80%, hsl(260 60% 15% / 0.4) 0px, transparent 50%);
-  }
-
-  /* Gradient Glass Card - 双色渐变融合效果 */
   .gradient-glass-card {
     @apply relative overflow-hidden;
     --card-color-left: hsl(260 80% 60% / 0.4);
@@ -181,7 +133,6 @@ All colors MUST be HSL.
       0 4px 16px -2px hsl(0 0% 0% / 0.05);
   }
 
-  /* Dark mode */
   .dark .gradient-glass-card {
     background: hsl(220 50% 8% / 0.75);
     border: 1px solid hsl(220 30% 25% / 0.5);

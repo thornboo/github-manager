@@ -296,7 +296,6 @@ function downloadBlob(blob: Blob, filename: string): void {
 }
 
 function migrateBackupData(backup: BackupData): BackupData {
-  // 当前版本暂无迁移逻辑；后续可按 version 做兼容处理
   return backup;
 }
 
@@ -414,11 +413,7 @@ function sanitizeAISettings(value: unknown): BackupAISettings | undefined {
       : "simple";
 
   const userPrompt =
-    typeof value.userPrompt === "string"
-      ? value.userPrompt
-      : typeof (value as { customPrompt?: unknown }).customPrompt === "string"
-        ? (value as { customPrompt: string }).customPrompt
-        : "";
+    typeof value.userPrompt === "string" ? value.userPrompt : "";
 
   const provider = isPlainObject(value.provider)
     ? sanitizeProvider(value.provider)
@@ -528,12 +523,9 @@ function mergeAISettings(
   const userPrompt =
     typeof incoming.userPrompt === "string"
       ? incoming.userPrompt
-      : typeof (incoming as { customPrompt?: unknown }).customPrompt ===
-          "string"
-        ? (incoming as { customPrompt: string }).customPrompt
-        : typeof existing.userPrompt === "string"
-          ? existing.userPrompt
-          : "";
+      : typeof existing.userPrompt === "string"
+        ? existing.userPrompt
+        : "";
 
   const analysisDepth: AnalysisDepth =
     incoming.analysisDepth === "quick" ||

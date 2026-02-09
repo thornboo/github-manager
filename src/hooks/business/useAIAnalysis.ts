@@ -60,6 +60,8 @@ export function useAIAnalysis() {
   const completedRepoIdsRef = useRef<Set<number>>(new Set());
   const suggestionsRef = useRef<RepoSuggestion[]>([]);
   const cacheContextHashRef = useRef<string | null>(null);
+  // 防止并发分析的互斥锁
+  const analysisRunIdRef = useRef(0);
 
   const handleStreamResult = useCallback((result: StreamResult) => {
     if (cancelledRef.current) return;
@@ -136,6 +138,10 @@ export function useAIAnalysis() {
         return [];
       }
 
+      // 生成唯一的 runId，取消之前可能正在进行的分析
+      const currentRunId = ++analysisRunIdRef.current;
+      cancelStream();
+
       // 初始化本轮分析状态
       pausedRef.current = false;
       cancelledRef.current = false;
@@ -184,6 +190,11 @@ export function useAIAnalysis() {
 
       try {
         while (true) {
+          // 检查是否有新的分析启动，如果是则退出当前分析
+          if (currentRunId !== analysisRunIdRef.current) {
+            throw new CancelledError("Superseded by new analysis");
+          }
+
           if (cancelledRef.current) {
             throw new CancelledError();
           }
@@ -202,6 +213,8 @@ export function useAIAnalysis() {
           if (remaining.length === 0) {
             break;
           }
+
+          const completedBeforeStream = completedRepoIdsRef.current.size;
 
           try {
             await startStream({
@@ -223,9 +236,18 @@ export function useAIAnalysis() {
               systemPrompt,
               userPrompt,
             });
+
+            // 保护机制：若本轮流式请求没有任何进度增量，则立刻失败，避免 while 重试死循环。
+            if (completedRepoIdsRef.current.size <= completedBeforeStream) {
+              throw new Error("流式分析未返回任何进度，请检查服务端连接后重试");
+            }
           } catch (error) {
             // 暂停/取消：startStream 会因为 AbortError 中断
             if (isAbortError(error)) {
+              // 检查是否被新的分析取代
+              if (currentRunId !== analysisRunIdRef.current) {
+                throw new CancelledError("Superseded by new analysis");
+              }
               if (cancelledRef.current) {
                 throw new CancelledError();
               }
@@ -258,7 +280,7 @@ export function useAIAnalysis() {
         throw error;
       }
     },
-    [startStream],
+    [startStream, cancelStream],
   );
 
   const analyzeSingleRepo = useCallback(

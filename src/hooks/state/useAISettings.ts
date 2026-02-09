@@ -10,8 +10,8 @@ export interface AISettings {
   autoAnalyzeNewStars: boolean;
   suggestLists: boolean;
   autoCreateTags: boolean;
-  systemPrompt: string; // User-editable System Prompt (empty = use default)
-  userPrompt: string; // User Prompt (appended to system prompt)
+  systemPrompt: string;
+  userPrompt: string;
   lastAnalyzedAt: string | null;
   analysisDepth: AnalysisDepth;
 }
@@ -39,14 +39,6 @@ export function useAISettings() {
       const stored = localStorage.getItem(STORAGE_KEYS.aiSettings);
       if (stored) {
         const parsed = JSON.parse(stored);
-        // Migration: convert old customPrompt to userPrompt
-        if (
-          parsed.customPrompt !== undefined &&
-          parsed.userPrompt === undefined
-        ) {
-          parsed.userPrompt = parsed.customPrompt;
-          delete parsed.customPrompt;
-        }
         return { ...defaultSettings, ...parsed };
       }
     } catch (e) {
@@ -55,7 +47,6 @@ export function useAISettings() {
     return defaultSettings;
   });
 
-  // Persist to localStorage
   useEffect(() => {
     try {
       localStorage.setItem(STORAGE_KEYS.aiSettings, JSON.stringify(settings));

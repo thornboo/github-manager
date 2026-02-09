@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { StarredRepo } from "@/types/github";
-import { useLocalDataContext } from "@/contexts/LocalDataContext";
+import { useTags } from "@/contexts/TagsContext";
+import { useRepoMeta } from "@/contexts/RepoMetaContext";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
@@ -21,14 +22,13 @@ interface RepoTagsNotesProps {
 export function RepoTagsNotes({ repo, showNote = false }: RepoTagsNotesProps) {
   const {
     tags,
-    getRepoMeta,
     getTagById,
     addTagToRepo,
     removeTagFromRepo,
-    setRepoNote,
     createTag,
     defaultColors,
-  } = useLocalDataContext();
+  } = useTags();
+  const { getRepoMeta, setRepoNote } = useRepoMeta();
 
   const repoMeta = getRepoMeta(repo.id);
   const [isTagPopoverOpen, setIsTagPopoverOpen] = useState(false);

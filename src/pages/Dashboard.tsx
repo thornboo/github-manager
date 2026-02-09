@@ -6,15 +6,15 @@ import { SkeletonLoading } from "@/components/common/SkeletonLoading";
 import { Header } from "@/components/layout/Header";
 import { Button } from "@/components/ui/button";
 import { Loader2, RefreshCw } from "lucide-react";
-import { useDashboardStats } from "@/hooks/useDashboardStats";
+import { useDashboardStats } from "@/hooks/business/useDashboardStats";
 import { OverviewCards } from "@/components/dashboard/OverviewCards";
 import { OpenPRList } from "@/components/dashboard/OpenPRList";
 import { OpenIssueList } from "@/components/dashboard/OpenIssueList";
 import { RecentStars } from "@/components/dashboard/RecentStars";
 import { LanguagePieChart } from "@/components/dashboard/LanguagePieChart";
 import { StarTrendChart } from "@/components/dashboard/StarTrendChart";
-import { useReleases } from "@/hooks/useReleases";
-import { useBatchReleases } from "@/hooks/useBatchReleases";
+import { useReleases } from "@/hooks/state/useReleases";
+import { useBatchReleases } from "@/hooks/api/useBatchReleases";
 import { useEffect } from "react";
 
 function DashboardContent() {

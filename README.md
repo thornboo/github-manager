@@ -1,5 +1,7 @@
 <div align="center">
 
+<img src="./public/pwa-512x512.png" alt="GitHub Manager Logo" width="120" />
+
 **English** | [简体中文](./README.zh-CN.md)
 
 # GitHub Manager
@@ -128,9 +130,28 @@ pnpm install
 pnpm dev
 # → http://localhost:8081
 
-# Full stack (with AI API)
-pnpm add -g vercel  # Install Vercel CLI globally
-vercel dev          # Start local dev server with serverless functions
+# API server (Express)
+pnpm dev:server
+# → http://localhost:3001
+
+# Full stack (frontend + API)
+pnpm dev:full
+```
+
+Vite proxies `/api/*` to `http://localhost:3001` in development.
+
+### Build & Run
+
+```bash
+# Build frontend and API server
+pnpm build
+pnpm build:server
+
+# Run API server
+pnpm start:server
+
+# Preview frontend build
+pnpm preview
 ```
 
 ---
@@ -159,6 +180,22 @@ Configure in app **Settings → AI Service**:
 | Model    | Model name, e.g., `gpt-4o`                                    |
 
 Supports OpenAI, Azure OpenAI, and any OpenAI-compatible API providers.
+
+### Runtime Environment Variables
+
+| Variable           | Default | Description                                                                |
+| ------------------ | ------- | -------------------------------------------------------------------------- |
+| `PORT`             | `3001`  | Express API server port                                                    |
+| `ALLOWED_ORIGINS`  | empty   | Comma-separated CORS allowlist for cross-origin API calls                  |
+| `VITE_USE_GRAPHQL` | `true`  | Set to `false` to force REST-only mode instead of GraphQL-first + fallback |
+
+> Note: Same-origin requests are always allowed. If `ALLOWED_ORIGINS` is empty, cross-origin is allowed only in non-production environments.
+
+### PWA & Icon Assets
+
+- Active app icons: `public/pwa-512x512.png`, `public/pwa-192x192.png`, `public/apple-touch-icon.png`, `public/favicon.ico`
+- Shortcut/badge icons: `public/shortcut-stars.png`, `public/shortcut-dashboard.png`, `public/badge-72x72.png`
+- Source image used for current icon set: `public/icon-source.png`
 
 ---
 
@@ -194,12 +231,13 @@ Option 2: Browser DevTools → Application → Local Storage → Delete domain d
 
 ## Security
 
-Uses **frontend-only trusted terminal model**:
+Uses a **frontend + same-origin API proxy model**:
 
 - GitHub Token / AI Key stored only in browser localStorage
-- GitHub API requests go directly from browser, not through backend
-- AI requests forwarded via same-origin `/api/*` stateless proxy, no server-side key storage
-- Supports `ALLOWED_ORIGINS` configuration for API call restrictions
+- GitHub API requests are sent from frontend with user token
+- AI requests go through same-origin `/api/*` stateless proxy (Express/Vercel Function)
+- API does not persist provider API keys
+- Supports `ALLOWED_ORIGINS` for cross-origin API restrictions
 
 > Use minimal permission tokens and only in trusted environments. For enterprise-grade security, consider evolving to BFF architecture.
 
@@ -207,11 +245,11 @@ Uses **frontend-only trusted terminal model**:
 
 ## Tech Stack
 
-| Frontend                | Backend               | Tooling                    |
-| ----------------------- | --------------------- | -------------------------- |
-| React 18 · TypeScript 5 | Vercel Serverless     | Vitest · ESLint · Prettier |
-| Vite 5 · Tailwind CSS 3 | GitHub GraphQL API    | pnpm · PWA                 |
-| shadcn/ui · Radix UI    | OpenAI-compatible API | React Query                |
+| Frontend                | Backend                      | Tooling                    |
+| ----------------------- | ---------------------------- | -------------------------- |
+| React 18 · TypeScript 5 | Express 5 · Vercel Functions | Vitest · ESLint · Prettier |
+| Vite 5 · Tailwind CSS 3 | GitHub GraphQL API           | pnpm · PWA                 |
+| shadcn/ui · Radix UI    | OpenAI-compatible API        | React Query                |
 
 ---
 

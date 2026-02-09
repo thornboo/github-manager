@@ -1,13 +1,10 @@
 import { useMemo } from "react";
-import {
-  GitHubIssue,
-  GitHubPullRequest,
-  ReleaseSubscription,
-  StarredRepo,
-} from "@/types/github";
+import { GitHubIssue, GitHubPullRequest, StarredRepo } from "@/types/github";
+import { ReleaseSubscription } from "@/types/local";
 import { startOfMonth, subMonths, format } from "date-fns";
 import { zhCN } from "date-fns/locale";
 import { getLanguageColor } from "@/lib/language-colors";
+import type { CreatedInvolved } from "@/hooks/api/created-involved";
 
 export interface LanguageData {
   name: string;
@@ -22,56 +19,59 @@ export interface StarTrendData {
   fullDate: string;
 }
 
+interface OpenStateSummary {
+  total: number;
+  created: number;
+  involved: number;
+}
+
+interface OpenStateItem {
+  state: string;
+  updated_at: string;
+}
+
 export interface DashboardStats {
-  // Stars
   totalStars: number;
   languageDistribution: LanguageData[];
   starTrend: StarTrendData[];
   newStarsThisMonth: number;
   recentStars: StarredRepo[];
-
-  // Pull Requests
-  openPRCount: {
-    total: number;
-    created: number;
-    involved: number;
-  };
+  openPRCount: OpenStateSummary;
   openPRs: GitHubPullRequest[];
-
-  // Issues
-  openIssueCount: {
-    total: number;
-    created: number;
-    involved: number;
-  };
+  openIssueCount: OpenStateSummary;
   openIssues: GitHubIssue[];
-
-  // Releases
   pendingReleaseCount: number;
 }
 
-function mergeAndSortOpenPRs(pullRequests: {
-  created: GitHubPullRequest[];
-  involved: GitHubPullRequest[];
-}): GitHubPullRequest[] {
-  return [...pullRequests.created, ...pullRequests.involved]
-    .filter((pr) => pr.state === "open")
+function countOpenItems<T extends { state: string }>(items: T[]): number {
+  return items.filter((item) => item.state === "open").length;
+}
+
+function mergeAndSortOpenItems<T extends OpenStateItem>(
+  items: CreatedInvolved<T>,
+): T[] {
+  return [...items.created, ...items.involved]
+    .filter((item) => item.state === "open")
     .sort(
       (a, b) =>
         new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime(),
     );
 }
 
-function mergeAndSortOpenIssues(issues: {
-  created: GitHubIssue[];
-  involved: GitHubIssue[];
-}): GitHubIssue[] {
-  return [...issues.created, ...issues.involved]
-    .filter((issue) => issue.state === "open")
-    .sort(
-      (a, b) =>
-        new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime(),
-    );
+function summarizeOpenItems<T extends OpenStateItem>(
+  items: CreatedInvolved<T>,
+) {
+  const created = countOpenItems(items.created);
+  const involved = countOpenItems(items.involved);
+
+  return {
+    count: {
+      total: created + involved,
+      created,
+      involved,
+    },
+    items: mergeAndSortOpenItems(items).slice(0, 5),
+  };
 }
 
 function computePendingReleaseCount(
@@ -87,18 +87,22 @@ function computePendingReleaseCount(
   }).length;
 }
 
+function getSafeCreatedInvolved<T>(
+  items: CreatedInvolved<T> | undefined,
+): CreatedInvolved<T> {
+  return items || { created: [], involved: [] };
+}
+
 export function useDashboardStats(
   stars: StarredRepo[] | undefined,
-  pullRequests:
-    | { created: GitHubPullRequest[]; involved: GitHubPullRequest[] }
-    | undefined,
-  issues: { created: GitHubIssue[]; involved: GitHubIssue[] } | undefined,
+  pullRequests: CreatedInvolved<GitHubPullRequest> | undefined,
+  issues: CreatedInvolved<GitHubIssue> | undefined,
   releaseSubscriptions: ReleaseSubscription[] | undefined,
 ): DashboardStats {
   return useMemo(() => {
     const safeStars = stars || [];
-    const safePRs = pullRequests || { created: [], involved: [] };
-    const safeIssues = issues || { created: [], involved: [] };
+    const safePRs = getSafeCreatedInvolved(pullRequests);
+    const safeIssues = getSafeCreatedInvolved(issues);
     const safeSubscriptions = releaseSubscriptions || [];
 
     if (safeStars.length === 0) {
@@ -116,7 +120,6 @@ export function useDashboardStats(
       };
     }
 
-    // 1. 语言分布统计
     const languageMap = new Map<string, number>();
     safeStars.forEach((repo) => {
       if (repo.language) {
@@ -136,7 +139,7 @@ export function useDashboardStats(
       0,
     );
 
-    const topLanguageEntries = sortedLanguages.slice(0, 6); // 只取前 6 种语言（更利于图表可读性）
+    const topLanguageEntries = sortedLanguages.slice(0, 6);
     const otherLanguageCount = sortedLanguages
       .slice(6)
       .reduce((sum, [, count]) => sum + count, 0);
@@ -165,11 +168,9 @@ export function useDashboardStats(
       });
     }
 
-    // 2. Star 趋势统计 (最近 6 个月)
     const now = new Date();
     const monthlyStars = new Map<string, number>();
 
-    // 初始化最近 6 个月
     for (let i = 5; i >= 0; i--) {
       const date = subMonths(now, i);
       const key = format(date, "yyyy-MM");
@@ -194,7 +195,6 @@ export function useDashboardStats(
       }),
     );
 
-    // 3. 本月新增统计
     const thisMonthStart = startOfMonth(now);
     const newStarsThisMonth = safeStars.filter((repo) => {
       if (repo.starred_at) {
@@ -203,7 +203,6 @@ export function useDashboardStats(
       return false;
     }).length;
 
-    // 4. 最近 Star（最近 5 个）
     const recentStars = [...safeStars]
       .sort(
         (a, b) =>
@@ -211,22 +210,8 @@ export function useDashboardStats(
       )
       .slice(0, 5);
 
-    // 5. Open PR / Issue（统计 + 列表）
-    const openPRCreated = safePRs.created.filter(
-      (pr) => pr.state === "open",
-    ).length;
-    const openPRInvolved = safePRs.involved.filter(
-      (pr) => pr.state === "open",
-    ).length;
-    const openPRs = mergeAndSortOpenPRs(safePRs).slice(0, 5);
-
-    const openIssueCreated = safeIssues.created.filter(
-      (issue) => issue.state === "open",
-    ).length;
-    const openIssueInvolved = safeIssues.involved.filter(
-      (issue) => issue.state === "open",
-    ).length;
-    const openIssues = mergeAndSortOpenIssues(safeIssues).slice(0, 5);
+    const openPRSummary = summarizeOpenItems(safePRs);
+    const openIssueSummary = summarizeOpenItems(safeIssues);
 
     return {
       languageDistribution,
@@ -234,18 +219,10 @@ export function useDashboardStats(
       newStarsThisMonth,
       totalStars: safeStars.length,
       recentStars,
-      openPRCount: {
-        total: openPRCreated + openPRInvolved,
-        created: openPRCreated,
-        involved: openPRInvolved,
-      },
-      openPRs,
-      openIssueCount: {
-        total: openIssueCreated + openIssueInvolved,
-        created: openIssueCreated,
-        involved: openIssueInvolved,
-      },
-      openIssues,
+      openPRCount: openPRSummary.count,
+      openPRs: openPRSummary.items,
+      openIssueCount: openIssueSummary.count,
+      openIssues: openIssueSummary.items,
       pendingReleaseCount: computePendingReleaseCount(safeSubscriptions),
     };
   }, [stars, pullRequests, issues, releaseSubscriptions]);

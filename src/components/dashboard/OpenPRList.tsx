@@ -12,7 +12,7 @@ import {
 } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { GitHubPullRequest } from "@/types/github";
-import { getRepoNameFromUrl } from "@/hooks/usePullRequests";
+import { getRepoNameFromUrl } from "@/lib/github-utils";
 
 function getLabelBgColor(hexColor: string): string {
   return `#${hexColor}30`;

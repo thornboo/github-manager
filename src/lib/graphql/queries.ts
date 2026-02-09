@@ -50,8 +50,7 @@ query GetStarredRepos($cursor: String) {
 }
 `;
 
-// Search PR：使用与 REST Search 类似的 query 语法（如 "author:xxx type:pr"），
-// 以兼容现有“我创建的/我参与的”两类数据。
+// Search PR：使用与 REST Search 类似的 query 语法（如 "author:xxx type:pr"）。
 export const SEARCH_PULL_REQUESTS_QUERY = `
 query SearchPullRequests($query: String!, $cursor: String) {
   search(query: $query, type: ISSUE, first: 100, after: $cursor) {
@@ -93,7 +92,7 @@ query SearchPullRequests($query: String!, $cursor: String) {
 }
 `;
 
-// Search Issue：同样使用 query string 来兼容“我创建的/我参与的”。
+// Search Issue：同样使用 query string。
 export const SEARCH_ISSUES_QUERY = `
 query SearchIssues($query: String!, $cursor: String) {
   search(query: $query, type: ISSUE, first: 100, after: $cursor) {
@@ -131,27 +130,6 @@ query SearchIssues($query: String!, $cursor: String) {
           totalCount
         }
       }
-    }
-  }
-}
-`;
-
-// Dashboard 统计（可选）：一次获取多项计数。
-export const DASHBOARD_STATS_QUERY = `
-query GetDashboardStats {
-  viewer {
-    login
-    starredRepositories {
-      totalCount
-    }
-    pullRequests(states: OPEN) {
-      totalCount
-    }
-    issues(states: OPEN) {
-      totalCount
-    }
-    repositories(first: 0) {
-      totalCount
     }
   }
 }

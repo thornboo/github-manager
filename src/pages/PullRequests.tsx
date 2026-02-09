@@ -14,7 +14,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { PRSource } from "@/hooks/usePullRequests";
+import { PRSource } from "@/hooks/api/usePullRequests";
 
 type PRFilter = "all" | "open" | "closed" | "merged";
 type PRSourceFilter = PRSource | "all";

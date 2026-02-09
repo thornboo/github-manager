@@ -5,20 +5,19 @@ import {
   useEffect,
   ReactNode,
 } from "react";
-import { useStars, setCachedStars } from "@/hooks/useStars";
-import { usePullRequests, setCachedPRs } from "@/hooks/usePullRequests";
-import { useIssues, setCachedIssues } from "@/hooks/useIssues";
-import { useSyncSettings } from "@/hooks/useSyncSettings";
+import { useStars, setCachedStars } from "@/hooks/api/useStars";
+import { usePullRequests, setCachedPRs } from "@/hooks/api/usePullRequests";
+import { useIssues, setCachedIssues } from "@/hooks/api/useIssues";
+import type { CreatedInvolved } from "@/hooks/api/created-involved";
+import { useSyncSettings } from "@/hooks/state/useSyncSettings";
 import { useAuth } from "@/contexts/AuthContext";
 import { StarredRepo, GitHubPullRequest, GitHubIssue } from "@/types/github";
 import { SyncStatus } from "@/components/layout/SyncButton";
 
 interface SyncContextType {
   stars: StarredRepo[] | undefined;
-  pullRequests:
-    | { created: GitHubPullRequest[]; involved: GitHubPullRequest[] }
-    | undefined;
-  issues: { created: GitHubIssue[]; involved: GitHubIssue[] } | undefined;
+  pullRequests: CreatedInvolved<GitHubPullRequest> | undefined;
+  issues: CreatedInvolved<GitHubIssue> | undefined;
   starsError: string | null;
   pullRequestsError: string | null;
   issuesError: string | null;
@@ -42,6 +41,12 @@ function getErrorMessage(error: unknown): string {
   }
 
   return "同步失败";
+}
+
+function hasCreatedInvolvedData<T>(
+  data: CreatedInvolved<T> | undefined,
+): data is CreatedInvolved<T> {
+  return !!data && (data.created.length > 0 || data.involved.length > 0);
 }
 
 export function SyncProvider({ children }: { children: ReactNode }) {
@@ -87,19 +92,13 @@ export function SyncProvider({ children }: { children: ReactNode }) {
   }, [starsData]);
 
   useEffect(() => {
-    if (
-      prsData &&
-      (prsData.created.length > 0 || prsData.involved.length > 0)
-    ) {
+    if (hasCreatedInvolvedData(prsData)) {
       setCachedPRs(prsData);
     }
   }, [prsData]);
 
   useEffect(() => {
-    if (
-      issuesData &&
-      (issuesData.created.length > 0 || issuesData.involved.length > 0)
-    ) {
+    if (hasCreatedInvolvedData(issuesData)) {
       setCachedIssues(issuesData);
     }
   }, [issuesData]);

@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
-import { ReleaseSubscription } from "@/types/github";
+import { ReleaseSubscription } from "@/types/local";
 import { STORAGE_KEYS } from "@/lib/constants";
 
 function loadSubscriptions(): ReleaseSubscription[] {

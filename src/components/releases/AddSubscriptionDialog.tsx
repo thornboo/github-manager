@@ -14,9 +14,9 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 import { StarredRepo } from "@/types/github";
-import { useVerifyRepo } from "@/hooks/useReleasesFetch";
+import { useVerifyRepo } from "@/hooks/api/useReleasesFetch";
 import { Search, Plus, Loader2, Check, AlertCircle } from "lucide-react";
-import { useToast } from "@/hooks/use-toast";
+import { useToast } from "@/hooks/ui/useToast";
 
 interface AddSubscriptionDialogProps {
   open: boolean;

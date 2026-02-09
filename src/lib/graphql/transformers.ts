@@ -43,7 +43,7 @@ export function transformStarredRepo(edge: GraphQLStarredEdge): StarredRepo {
 
 /**
  * 将 GraphQL PR 数据转换为应用内部格式（GitHubPullRequest）。
- * 注意：为了兼容现有 UI（通过 repository_url 解析 owner/repo），这里构造 REST 风格的 repository_url。
+ * 这里构造 REST 风格的 repository_url，供 UI 统一解析 owner/repo。
  */
 export function transformPullRequest(
   pr: GraphQLPullRequest,

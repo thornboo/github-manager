@@ -4,7 +4,6 @@ import path from "path";
 import { componentTagger } from "lovable-tagger";
 import { VitePWA } from "vite-plugin-pwa";
 
-// https://vitejs.dev/config/
 export default defineConfig(({ mode }) => ({
   server: {
     host: "::",
@@ -21,17 +20,12 @@ export default defineConfig(({ mode }) => ({
   },
   plugins: [
     react(),
-    mode === "development" && componentTagger(),
+    ...(mode === "development" ? [componentTagger()] : []),
     VitePWA({
-      // 使用 injectManifest 以便我们能扩展 SW 行为（缓存策略/消息处理等）。
       strategies: "injectManifest",
       srcDir: "src",
       filename: "sw.ts",
-
-      // 由应用侧自行调用 virtual:pwa-register 注册，避免注入脚本造成重复注册。
       injectRegister: false,
-      registerType: "prompt",
-
       includeAssets: [
         "favicon.ico",
         "apple-touch-icon.png",
@@ -42,7 +36,6 @@ export default defineConfig(({ mode }) => ({
         "shortcut-stars.png",
         "shortcut-dashboard.png",
       ],
-
       manifest: {
         name: "GitHub Manager",
         short_name: "GH Manager",
@@ -89,17 +82,15 @@ export default defineConfig(({ mode }) => ({
         ],
         categories: ["developer", "productivity", "utilities"],
       },
-
       injectManifest: {
         globPatterns: ["**/*.{js,css,html,ico,png,svg,woff2}"],
       },
-
       devOptions: {
         enabled: mode === "development",
         type: "module",
       },
     }),
-  ].filter(Boolean),
+  ],
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "./src"),

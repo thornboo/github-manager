@@ -1,9 +1,9 @@
 import { useMemo } from "react";
 import type { StarredRepo } from "@/types/github";
 import type { RepoMeta } from "@/types/local";
-import type { SearchMatch } from "@/hooks/useAISearch";
+import type { SearchMatch } from "@/hooks/business/useAISearch";
 import type { SearchMode } from "@/types/ui";
-import { filterRepos } from "@/hooks/useStars";
+import { filterRepos } from "@/hooks/api/useStars";
 
 export function useFilteredRepos(options: {
   repos: StarredRepo[];

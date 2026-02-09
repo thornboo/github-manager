@@ -4,8 +4,10 @@ import type {
   ProviderConfig,
   SearchRepoInput,
 } from "../types.js";
+import { AI_SEARCH_SYSTEM_PROMPT } from "../prompts/ai-search.js";
 import {
   normalizeChatCompletionsEndpoint,
+  safeJsonParse,
   safeReadJson,
   safeReadText,
   validateProviderBaseUrl,
@@ -45,8 +47,6 @@ export default async function aiSearch(
     return;
   }
 
-  const systemPrompt = `你是一个智能的 GitHub 仓库搜索助手。用户会给你一个搜索查询和一组仓库信息，你需要理解用户的搜索意图并找出最匹配的仓库。\n\n搜索能力：\n1. 语义理解：理解用户查询的真实意图，不仅仅是关键词匹配\n2. 多维度匹配：综合考虑仓库名称、描述、编程语言、GitHub Topics、用户标签、用户备注\n3. 模糊匹配：处理同义词、相关概念（如"图表库"能匹配到 chart, visualization, d3 等）\n4. 用户上下文：用户标签和备注代表用户对仓库的个人理解，应给予较高权重\n\n匹配示例：\n- 查询"数据可视化工具" → 匹配描述包含 chart/graph/visualization 的仓库，或有相关 Topics\n- 查询"我标记过的 React 状态管理" → 查找用户标签/备注中包含 React、state management 相关内容的仓库\n- 查询"Python 爬虫框架" → 匹配语言为 Python 且 Topics/描述涉及 spider/crawler/scraping 的仓库\n\n返回规则：\n- 只返回确实相关的仓库，不要强行匹配\n- relevance 分三级：high（高度相关）、medium（中等相关）、low（弱相关）\n- reason 简要说明匹配原因（1句话）\n- 按相关度从高到低排序`;
-
   const reposInfo = repos
     .map((repo) => {
       const parts: string[] = [`[ID: ${repo.id}] ${repo.full_name}`];
@@ -79,7 +79,7 @@ export default async function aiSearch(
     body: JSON.stringify({
       model: provider.model || "gpt-3.5-turbo",
       messages: [
-        { role: "system", content: systemPrompt },
+        { role: "system", content: AI_SEARCH_SYSTEM_PROMPT },
         { role: "user", content: userPrompt },
       ],
       tools: [
@@ -137,8 +137,7 @@ export default async function aiSearch(
       res.status(402).json({ error: "AI 服务额度不足" });
       return;
     }
-    const errorText = await safeReadText(response);
-    void errorText;
+    await safeReadText(response);
     res.status(500).json({ error: "AI 搜索服务出错" });
     return;
   }
@@ -149,12 +148,10 @@ export default async function aiSearch(
 
   const toolCall = aiResponse?.choices?.[0]?.message?.tool_calls?.[0];
   if (toolCall && toolCall.function?.name === "return_search_results") {
-    try {
-      const result = JSON.parse(toolCall.function.arguments || "{}");
+    const result = safeJsonParse(toolCall.function.arguments || "{}");
+    if (result) {
       res.json(result);
       return;
-    } catch {
-      // ignore and try fallback
     }
   }
 
@@ -162,12 +159,10 @@ export default async function aiSearch(
   if (typeof content === "string" && content) {
     const jsonMatch = content.match(/\{[\s\S]*"matches"[\s\S]*\}/);
     if (jsonMatch) {
-      try {
-        const result = JSON.parse(jsonMatch[0]);
+      const result = safeJsonParse(jsonMatch[0]);
+      if (result) {
         res.json(result);
         return;
-      } catch {
-        // ignore
       }
     }
   }

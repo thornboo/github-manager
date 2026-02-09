@@ -5,7 +5,6 @@ export const API_DEFAULTS = {
   perPage: 100,
 } as const;
 
-// 兼容现有 localStorage key：避免重构导致用户数据丢失
 export const STORAGE_KEYS = {
   auth: "github_stars_auth",
   localData: "github_stars_local_data",

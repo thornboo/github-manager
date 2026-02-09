@@ -15,7 +15,7 @@ import {
 } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { PieChart as PieChartIcon } from "lucide-react";
-import { LanguageData } from "@/hooks/useDashboardStats";
+import { LanguageData } from "@/hooks/business/useDashboardStats";
 import { useNavigate } from "react-router-dom";
 
 interface LanguagePieChartProps {

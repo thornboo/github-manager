@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { FolderOpen, Loader2, Lock, Pencil, Plus } from "lucide-react";
-import { useLists, useCreateList } from "@/hooks/useLists";
+import { useLists, useCreateList } from "@/hooks/api/useLists";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {

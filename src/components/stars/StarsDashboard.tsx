@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "react-router-dom";
-import { useStars, getLanguages } from "@/hooks/useStars";
-import { useListStars, useLists, useAddToList } from "@/hooks/useLists";
+import { useStars, getLanguages } from "@/hooks/api/useStars";
+import { useListStars, useLists, useAddToList } from "@/hooks/api/useLists";
 import { useTags } from "@/contexts/TagsContext";
 import { useRepoMeta } from "@/contexts/RepoMetaContext";
 import { StarsToolbar } from "@/components/stars/StarsToolbar";
@@ -12,11 +12,9 @@ import { EmptyState } from "@/components/common/EmptyState";
 import { LoadingOverlay } from "@/components/common/LoadingOverlay";
 import { ScrollToTop } from "@/components/layout/ScrollToTop";
 import { Button } from "@/components/ui/button";
-import {
-  useFilteredRepos,
-  useSortedRepos,
-  useStarsDashboardAI,
-} from "@/hooks/business";
+import { useFilteredRepos } from "@/hooks/business/useFilteredRepos";
+import { useSortedRepos } from "@/hooks/business/useSortedRepos";
+import { useStarsDashboardAI } from "@/hooks/business/useStarsDashboardAI";
 import { useStarsDashboardUrlState } from "@/hooks/ui/useStarsDashboardUrlState";
 import { useIdSelection } from "@/hooks/ui/useIdSelection";
 import { useResponsiveColumns } from "@/hooks/ui/useResponsiveColumns";

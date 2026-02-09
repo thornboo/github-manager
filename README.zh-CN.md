@@ -1,5 +1,7 @@
 <div align="center">
 
+<img src="./public/pwa-512x512.png" alt="GitHub Manager 图标" width="120" />
+
 [English](./README.md) | **简体中文**
 
 # GitHub Manager
@@ -128,9 +130,28 @@ pnpm install
 pnpm dev
 # → http://localhost:8081
 
-# 完整联调（含 AI API）
-pnpm add -g vercel  # 全局安装 Vercel CLI
-vercel dev          # 启动本地开发服务器（含 Serverless Functions）
+# API 服务（Express）
+pnpm dev:server
+# → http://localhost:3001
+
+# 前后端联调
+pnpm dev:full
+```
+
+开发环境下，Vite 会把 `/api/*` 代理到 `http://localhost:3001`。
+
+### 构建与运行
+
+```bash
+# 构建前端与 API 服务
+pnpm build
+pnpm build:server
+
+# 启动 API 服务
+pnpm start:server
+
+# 预览前端构建产物
+pnpm preview
 ```
 
 ---
@@ -159,6 +180,22 @@ vercel dev          # 启动本地开发服务器（含 Serverless Functions）
 | Model    | 模型名称，如 `gpt-4o`                           |
 
 支持 OpenAI、Azure OpenAI 及所有兼容接口的国产大模型。
+
+### 运行时环境变量
+
+| 变量名             | 默认值 | 说明                                                     |
+| ------------------ | ------ | -------------------------------------------------------- |
+| `PORT`             | `3001` | Express API 服务端口                                     |
+| `ALLOWED_ORIGINS`  | 空     | 逗号分隔的跨域来源白名单（用于 API 跨源访问）            |
+| `VITE_USE_GRAPHQL` | `true` | 设为 `false` 可强制仅用 REST，不走 GraphQL 优先+回退策略 |
+
+> 说明：同源请求始终允许；当 `ALLOWED_ORIGINS` 为空时，仅在非生产环境允许跨源请求。
+
+### PWA 与图标资源
+
+- 当前应用图标：`public/pwa-512x512.png`、`public/pwa-192x192.png`、`public/apple-touch-icon.png`、`public/favicon.ico`
+- 快捷方式与徽章图标：`public/shortcut-stars.png`、`public/shortcut-dashboard.png`、`public/badge-72x72.png`
+- 当前图标生成源图：`public/icon-source.png`
 
 ---
 
@@ -194,12 +231,13 @@ pnpm config set registry https://registry.npmjs.org/
 
 ## 安全架构
 
-采用 **纯前端受信终端模式**：
+采用 **前端 + 同源 API 代理模式**：
 
 - GitHub Token / AI Key 仅存储于浏览器本地
-- GitHub API 由浏览器直连，不经过后端
-- AI 请求通过同源 `/api/*` 无状态转发，服务端不持久化密钥
-- 支持配置 `ALLOWED_ORIGINS` 限制 API 调用来源
+- GitHub API 请求由前端携带用户 Token 发起
+- AI 请求通过同源 `/api/*` 无状态代理（Express/Vercel Function）
+- API 服务不持久化第三方 AI 密钥
+- 支持通过 `ALLOWED_ORIGINS` 限制跨源 API 调用来源
 
 > 请使用最小权限 Token，并仅在受信任环境下使用。如需企业级安全方案，建议演进到 BFF 模式。
 
@@ -207,11 +245,11 @@ pnpm config set registry https://registry.npmjs.org/
 
 ## 技术栈
 
-| 前端                    | 后端               | 工具链                     |
-| ----------------------- | ------------------ | -------------------------- |
-| React 18 · TypeScript 5 | Vercel Serverless  | Vitest · ESLint · Prettier |
-| Vite 5 · Tailwind CSS 3 | GitHub GraphQL API | pnpm · PWA                 |
-| shadcn/ui · Radix UI    | OpenAI 兼容接口    | React Query                |
+| 前端                    | 后端                         | 工具链                     |
+| ----------------------- | ---------------------------- | -------------------------- |
+| React 18 · TypeScript 5 | Express 5 · Vercel Functions | Vitest · ESLint · Prettier |
+| Vite 5 · Tailwind CSS 3 | GitHub GraphQL API           | pnpm · PWA                 |
+| shadcn/ui · Radix UI    | OpenAI 兼容接口              | React Query                |
 
 ---
 

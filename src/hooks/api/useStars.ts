@@ -3,10 +3,8 @@ import { useAuth } from "@/contexts/AuthContext";
 import { StarredRepo } from "@/types/github";
 import { API_DEFAULTS, STORAGE_KEYS } from "@/lib/constants";
 import { GitHubApiClient } from "@/lib/github-api";
+import { fetchWithGraphQLFallback, isGraphQLEnabled } from "@/lib/graphql-mode";
 import { fetchAllStarsGraphQL } from "@/hooks/api/useStarsGraphQL";
-
-// 默认启用 GraphQL；如需强制回退 REST，可设置 VITE_USE_GRAPHQL=false。
-const USE_GRAPHQL = import.meta.env.VITE_USE_GRAPHQL !== "false";
 
 // 从 localStorage 读取缓存
 export function getCachedStars(): StarredRepo[] | undefined {
@@ -29,11 +27,6 @@ export function setCachedStars(data: StarredRepo[]) {
   } catch (e) {
     console.warn("Failed to cache stars data:", e);
   }
-}
-
-// 获取缓存时间戳
-export function getCacheTimestamp(): string | null {
-  return localStorage.getItem(STORAGE_KEYS.starsCacheTimestamp);
 }
 
 interface GitHubStarredItem {
@@ -113,21 +106,16 @@ export function useStars() {
   const cachedData = getCachedStars();
 
   return useQuery({
-    queryKey: ["stars", USE_GRAPHQL ? "graphql" : "rest", accessToken],
+    queryKey: ["stars", isGraphQLEnabled ? "graphql" : "rest", accessToken],
     queryFn: async () => {
       if (!accessToken) throw new Error("Missing access token");
 
-      if (!USE_GRAPHQL) {
-        return fetchAllStars(accessToken);
-      }
-
-      try {
-        return await fetchAllStarsGraphQL(accessToken);
-      } catch (e) {
-        // Fallback to REST to keep the app usable even if GraphQL schema/permissions differ.
-        console.warn("GraphQL stars fetch failed, falling back to REST:", e);
-        return fetchAllStars(accessToken);
-      }
+      return fetchWithGraphQLFallback({
+        fetchRest: () => fetchAllStars(accessToken),
+        fetchGraphQL: () => fetchAllStarsGraphQL(accessToken),
+        fallbackMessage: "GraphQL stars fetch failed, falling back to REST:",
+        useGraphQL: isGraphQLEnabled,
+      });
     },
     enabled: isAuthenticated && !!accessToken,
     initialData: cachedData,
